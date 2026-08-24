@@ -1,4 +1,5 @@
 # CAMOS
+![CAMOS Logo](public/camos.png)
 **Client Administration & Management Operations System**
 
 CAMOS is the centralized internal dashboard used by staff to manage **VaultScope** operations. Built with React, Vite, and Tailwind CSS, it acts as the primary control plane for billing, customer support, infrastructure API integrations, and staff role-based access control (RBAC).

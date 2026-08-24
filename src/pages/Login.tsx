@@ -1,12 +1,11 @@
-import { Users, Lock } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Login() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full border border-border bg-foreground/[0.02] p-8 text-center flex flex-col items-center">
-        <Lock className="w-12 h-12 text-muted-foreground mb-6" />
-        <h1 className="text-2xl font-light tracking-wider uppercase mb-2">CAMOS</h1>
+        <img src="/camos.png" alt="CAMOS Logo" className="w-32 h-32 object-contain mb-6" />
         <p className="text-sm text-muted-foreground mb-8">
           Restricted Access. Authentication is strictly managed via Authentik SSO. Local passwords are disabled.
         </p>

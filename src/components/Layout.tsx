@@ -116,8 +116,12 @@ export function Sidebar() {
   return (
     <div className="w-64 border-r border-border h-screen bg-background flex flex-col fixed z-10">
       <div className="p-6 border-b border-border">
-        <h1 className="text-xl font-medium tracking-tight">CAMOS</h1>
-        <p className="text-[10px] text-muted-foreground mt-1 leading-tight">Client Administration &<br/>Management Operations System</p>
+        <div className="flex items-center gap-3">
+          <img src="/camos.png" alt="CAMOS Logo" className="w-12 h-12 object-contain" />
+          <div>
+            <p className="text-[10px] text-muted-foreground leading-tight">Client Administration &<br/>Management Operations System</p>
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto py-4">
         {links.map(link => (
