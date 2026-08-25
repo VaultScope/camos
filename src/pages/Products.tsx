@@ -4,6 +4,7 @@ import { Page } from '../components/Layout';
 import { Plus, X, Server, Edit2, EyeOff, BarChart2, TrendingUp, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../lib/hooks';
+import { useToast } from '../components/Toast';
 import type { Product } from '../lib/types';
 
 interface ProductFormData {
@@ -125,6 +126,7 @@ function ProductsInsights() {
 
 function ProductsNew() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [newPlan, setNewPlan] = useState<ProductFormData>({
@@ -153,7 +155,7 @@ function ProductsNew() {
       await api.post('/admin/products', toApiPayload(newPlan));
       navigate('/products');
     } catch (e: any) {
-      alert(e.message || 'Failed to create product');
+      toast.error(e.message || 'Failed to create product');
     } finally {
       setSaving(false);
     }
@@ -386,6 +388,7 @@ function ProductsList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const { data: products, loading, error, refetch } = useApi<Product[]>('/admin/products');
+  const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<(ProductFormData & { id: string }) | null>(null);
   const [saving, setSaving] = useState(false);
@@ -413,7 +416,7 @@ function ProductsList() {
       setIsModalOpen(false);
       refetch();
     } catch (e: any) {
-      alert(e.message || 'Failed to update product');
+      toast.error(e.message || 'Failed to update product');
     } finally {
       setSaving(false);
     }

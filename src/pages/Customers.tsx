@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Plus, ArrowLeft, Server, CreditCard, LifeBuoy, Clock, ExternalLink, Ban, Play } from 'lucide-react';
+import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play } from 'lucide-react';
 import { useApi } from '../lib/hooks';
-import type { Customer, Service } from '../lib/types';
+import { api } from '../lib/api';
+import { useToast } from '../components/Toast';
+import type { Customer, Service, Ticket, ActivityLog } from '../lib/types';
 
 function CustomerList() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,12 +102,16 @@ function CustomerList() {
 function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: customer, loading, error } = useApi<Customer>(`/admin/customers/${id}`);
+  const { data: customer, loading, error, refetch } = useApi<Customer>(`/admin/customers/${id}`);
   const { data: services } = useApi<Service[]>(`/admin/services?customer_id=${id}`);
+  const { data: tickets } = useApi<Ticket[]>(`/admin/tickets?customer_id=${id}`);
+  const { data: activity } = useApi<ActivityLog[]>(`/admin/activity?customer_id=${id}`);
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'services' | 'invoices' | 'tickets' | 'activity'>('services');
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
   const [notesInitialized, setNotesInitialized] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   if (!notesInitialized && customer) {
     setNotes(customer.notes || '');
@@ -126,17 +132,45 @@ function CustomerDetail() {
   }
 
   const customerServices = services || [];
+  const customerTickets = tickets || [];
+  const customerActivity = activity || [];
 
-  const handleSaveNotes = () => {
-    setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 2000);
+  const handleSaveNotes = async () => {
+    if (!customer || updating) return;
+    setUpdating(true);
+    try {
+      await api.put(`/admin/customers/${id}`, { notes });
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to save notes: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: 'active' | 'suspended') => {
+    if (!customer || updating) return;
+    const action = newStatus === 'suspended' ? 'suspend' : 'reactivate';
+    if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+
+    setUpdating(true);
+    try {
+      await api.put(`/admin/customers/${id}`, { status: newStatus });
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to ${action} customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const tabs = [
     { key: 'services', label: 'Services', count: customerServices.length },
     { key: 'invoices', label: 'Invoices', count: 0 },
-    { key: 'tickets', label: 'Tickets', count: 0 },
-    { key: 'activity', label: 'Activity', count: 0 },
+    { key: 'tickets', label: 'Tickets', count: customerTickets.length },
+    { key: 'activity', label: 'Activity', count: customerActivity.length },
   ] as const;
 
   return (
@@ -235,13 +269,13 @@ function CustomerDetail() {
                 <Server className="w-3.5 h-3.5 text-muted-foreground" /> Provision Service
               </Link>
               {customer.status === 'active' && (
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
-                  <Ban className="w-3.5 h-3.5 text-muted-foreground" /> Suspend Account
+                <button onClick={() => handleStatusChange('suspended')} disabled={updating} className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Ban className="w-3.5 h-3.5 text-muted-foreground" /> {updating ? 'Processing...' : 'Suspend Account'}
                 </button>
               )}
               {customer.status === 'suspended' && (
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
-                  <Play className="w-3.5 h-3.5 text-muted-foreground" /> Reactivate
+                <button onClick={() => handleStatusChange('active')} disabled={updating} className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Play className="w-3.5 h-3.5 text-muted-foreground" /> {updating ? 'Processing...' : 'Reactivate'}
                 </button>
               )}
             </div>
@@ -255,8 +289,8 @@ function CustomerDetail() {
               className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground resize-none mb-2"
               placeholder="Staff-only notes about this customer..."
             />
-            <button onClick={handleSaveNotes} className="text-xs px-3 py-1.5 bg-foreground text-background hover:bg-foreground/90 transition-colors cursor-pointer">
-              {notesSaved ? 'Saved' : 'Save Notes'}
+            <button onClick={handleSaveNotes} disabled={updating} className="text-xs px-3 py-1.5 bg-foreground text-background hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              {updating ? 'Saving...' : notesSaved ? 'Saved' : 'Save Notes'}
             </button>
           </div>
         </div>
@@ -313,14 +347,61 @@ function CustomerDetail() {
       )}
 
       {activeTab === 'tickets' && (
-        <div className="border border-border bg-background p-6 text-center text-sm text-muted-foreground">
-          No tickets.
+        <div className="border border-border bg-background divide-y divide-border">
+          {customerTickets.length > 0 ? (
+            <>
+              <div className="p-3 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
+                <div className="col-span-2">Subject</div>
+                <div>Category</div>
+                <div>Status</div>
+                <div>Created</div>
+              </div>
+              {customerTickets.map(t => (
+                <Link key={t.id} to={`/tickets/${t.id}`} className="p-3 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.02]">
+                  <div className="col-span-2 font-medium">{t.subject}</div>
+                  <div className="text-muted-foreground capitalize">{t.category}</div>
+                  <div>
+                    <span className={`text-[10px] px-2 py-0.5 border uppercase ${t.status === 'open' ? 'border-green-500/30 text-green-500' : t.status === 'in_progress' ? 'border-blue-500/30 text-blue-500' : t.status === 'waiting_customer' ? 'border-yellow-500/30 text-yellow-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                      {t.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground text-xs">{t.created_at?.split('T')[0]}</div>
+                </Link>
+              ))}
+            </>
+          ) : (
+            <div className="p-6 text-center text-sm text-muted-foreground">No tickets.</div>
+          )}
         </div>
       )}
 
       {activeTab === 'activity' && (
-        <div className="border border-border bg-background p-6 text-center text-sm text-muted-foreground">
-          No recorded activity.
+        <div className="border border-border bg-background divide-y divide-border">
+          {customerActivity.length > 0 ? (
+            <>
+              <div className="p-3 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-4 text-muted-foreground">
+                <div className="col-span-2">Activity</div>
+                <div>Category</div>
+                <div>Time</div>
+              </div>
+              {customerActivity.map((a, i) => (
+                <div key={i} className="p-3 text-sm grid grid-cols-4 items-center">
+                  <div className="col-span-2">
+                    <span className="font-medium">{a.action}</span> {a.target}
+                    {a.detail && <span className="text-muted-foreground text-xs ml-2">— {a.detail}</span>}
+                  </div>
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 border border-border uppercase text-muted-foreground">
+                      {a.category}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground text-xs">{a.created_at?.replace('T', ' ').slice(0, 16)}</div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="p-6 text-center text-sm text-muted-foreground">No recorded activity.</div>
+          )}
         </div>
       )}
     </Page>

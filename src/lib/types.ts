@@ -81,6 +81,74 @@ export interface Ticket {
   updated_at: string;
 }
 
+export interface TicketMessage {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  author_type: 'staff' | 'customer' | 'system';
+  content: string;
+  internal: boolean;
+  created_at: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  mailbox: string;
+  default_assignee_id: string | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  customer_id: string;
+  status: 'draft' | 'pending' | 'paid' | 'overdue' | 'void';
+  subtotal: string;
+  tax_rate: string;
+  tax_amount: string;
+  total: string;
+  issue_date: string;
+  due_date: string;
+  paid_at: string | null;
+  stripe_payment_intent_id: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  invoice_id: string;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  total: string;
+  service_id: string | null;
+  sort_order: number;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: string;
+  usage_limit: number | null;
+  usage_count: number;
+  expires_at: string | null;
+  status: 'active' | 'exhausted' | 'expired' | 'disabled';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaxRate {
+  id: string;
+  name: string;
+  country: string;
+  rate: string;
+  created_at: string;
+}
+
 export interface Setting {
   key: string;
   value: unknown;

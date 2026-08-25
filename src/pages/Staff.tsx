@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Shield, Users, Plus, Edit2, Trash2, Camera, Key, ShieldCheck, Mail, CheckCircle2 } from 'lucide-react';
+import { Shield, Users, Plus, Edit2, Camera, Key, ShieldCheck, Mail, CheckCircle2, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { useToast } from '../components/Toast';
 import type { Staff, Role } from '../lib/types';
 
 interface StaffWithRole extends Staff {
@@ -234,6 +235,7 @@ function StaffMembers() {
 function StaffRbac() {
   const [searchRole, setSearchRole] = useState('');
   const { data: roles, loading, error, refetch } = useApi<Role[]>('/admin/staff/roles');
+  const toast = useToast();
 
   const items = roles || [];
   const filtered = items.filter(r =>
@@ -245,6 +247,7 @@ function StaffRbac() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editRole, setEditRole] = useState({ id: '', name: '', mapped_group: '', permissions: [] as string[] });
+  const [saving, setSaving] = useState(false);
 
   const availablePerms = ['*', 'user.view', 'user.create', 'user.update', 'user.delete', 'billing.manage', 'tickets.manage', 'servers.power', 'servers.wipe', 'api.manage'];
 
@@ -266,6 +269,42 @@ function StaffRbac() {
     setEditRole({ id: role.id, name: role.name, mapped_group: role.mapped_group, permissions: [...role.permissions] });
     setModalMode('edit');
     setIsRoleModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!editRole.name.trim() || !editRole.mapped_group.trim() || saving) return;
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: editRole.name.trim(),
+        mapped_group: editRole.mapped_group.trim(),
+        permissions: editRole.permissions,
+      };
+
+      if (modalMode === 'create') {
+        await api.post('/admin/staff/roles', payload);
+      } else {
+        await api.put(`/admin/staff/roles/${editRole.id}`, payload);
+      }
+
+      setIsRoleModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to save role: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Delete role "${name}"? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/staff/roles/${id}`);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to delete role: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
   return (
@@ -309,6 +348,9 @@ function StaffRbac() {
               <div className="text-right flex justify-end gap-2">
                 <button onClick={() => openEditModal(r)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
                   <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(r.id, r.name)} className="text-xs border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/5 transition-colors cursor-pointer" title="Delete">
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -361,10 +403,11 @@ function StaffRbac() {
             <div className="flex justify-end gap-3 mt-8 border-t border-border pt-4">
               <button onClick={() => setIsRoleModalOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer border border-transparent">Cancel</button>
               <button
-                disabled={!editRole.name || !editRole.mapped_group}
+                onClick={handleSave}
+                disabled={!editRole.name || !editRole.mapped_group || saving}
                 className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
-                {modalMode === 'create' ? 'Save Role' : 'Save Changes'}
+                {saving ? 'Saving...' : modalMode === 'create' ? 'Save Role' : 'Save Changes'}
               </button>
             </div>
           </div>

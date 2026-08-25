@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { AlertTriangle, CreditCard, Server, LifeBuoy, HardDrive, Plug, CheckCircle2, X, Check } from 'lucide-react';
+import { AlertTriangle, CreditCard, Server, LifeBuoy, HardDrive, Plug, CheckCircle2, Check } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { Notification } from '../lib/types';

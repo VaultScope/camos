@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { ArrowRight, Bell, CreditCard, ExternalLink, LifeBuoy, Plus, Server, TrendingUp, Users, Plug, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowRight, Bell, CreditCard, ExternalLink, LifeBuoy, Plus, TrendingUp, Plug, CheckCircle2, Clock } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 
 interface DashboardStats {
