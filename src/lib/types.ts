@@ -132,6 +132,42 @@ export interface Role {
   updated_at: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  actor_id: string | null;
+  actor_type: 'staff' | 'system' | 'customer';
+  actor_name: string;
+  category: string;
+  action: string;
+  target: string;
+  detail: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  category: string;
+  title: string;
+  detail: string;
+  severity: 'critical' | 'warning' | 'info';
+  read: boolean;
+  resolved: boolean;
+  actions: unknown;
+  created_at: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  category: string;
+  subject: string;
+  body: string;
+  enabled: boolean;
+  variables: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthClaims {
   sub: string;
   email: string;
