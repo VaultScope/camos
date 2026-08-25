@@ -1,88 +1,144 @@
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Link } from 'react-router-dom';
 import { Page } from '../components/Layout';
+import { ArrowRight, Bell, CreditCard, ExternalLink, LifeBuoy, Plus, Server, TrendingUp, Users, Plug, CheckCircle2, Clock } from 'lucide-react';
+import { useApi } from '../lib/hooks';
 
-const mrrData = [
-  { name: 'Jan', current: 18400, prev: 16200 },
-  { name: 'Feb', current: 19100, prev: 16800 },
-  { name: 'Mar', current: 20500, prev: 17200 },
-  { name: 'Apr', current: 21200, prev: 17800 },
-  { name: 'May', current: 22800, prev: 18100 },
-  { name: 'Jun', current: 24500, prev: 18900 },
-];
-
-const nodesData = [
-  { name: 'fsn1-dc14', usage: 82 },
-  { name: 'fsn1-dc15', usage: 65 },
-  { name: 'hel1-dc2', usage: 91 },
-  { name: 'nbg1-dc3', usage: 45 },
-  { name: 'ash-dc1', usage: 30 },
-];
+interface DashboardStats {
+  active_services: number;
+  total_customers: number;
+  open_tickets: number;
+  pending_jobs: number;
+  mrr: number;
+}
 
 export default function Dashboard() {
+  const { data: stats, loading } = useApi<DashboardStats>('/admin/dashboard/stats');
+
   return (
-    <Page title="Dashboard Overview">
-      <div className="grid grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'MRR', value: '€24,500' },
-          { label: 'Active Hetzner Servers', value: '142' },
-          { label: 'Open Tickets', value: '7' },
-          { label: 'Hetzner API Status', value: 'Operational', color: 'text-green-500' },
-        ].map(stat => (
-          <div key={stat.label} className="border border-border p-5 divide-y divide-border bg-background">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{stat.label}</div>
-            <div className={`text-2xl font-light ${stat.color || ''}`}>{stat.value}</div>
-          </div>
-        ))}
+    <Page title="Dashboard">
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        <div className="border border-border p-4 bg-background">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">MRR</div>
+          <div className="text-xl font-light">{loading ? '—' : `€${(stats?.mrr ?? 0).toLocaleString()}`}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">monthly recurring</div>
+        </div>
+        <div className="border border-border p-4 bg-background">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active Services</div>
+          <div className="text-xl font-light">{loading ? '—' : stats?.active_services ?? 0}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">provisioned</div>
+        </div>
+        <div className="border border-border p-4 bg-background">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Open Tickets</div>
+          <div className="text-xl font-light">{loading ? '—' : stats?.open_tickets ?? 0}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">awaiting response</div>
+        </div>
+        <div className="border border-border p-4 bg-background">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Pending Jobs</div>
+          <div className="text-xl font-light">{loading ? '—' : stats?.pending_jobs ?? 0}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">in queue</div>
+        </div>
+        <div className="border border-border p-4 bg-background">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Customers</div>
+          <div className="text-xl font-light">{loading ? '—' : stats?.total_customers ?? 0}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">registered</div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 border border-border p-5 bg-background">
-          <h3 className="text-sm font-medium mb-6">Revenue Growth (6 Months)</h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mrrData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCurrent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#666" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `€${v/1000}k`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }}
-                  itemStyle={{ color: '#fff' }}
-                />
-                <Area type="monotone" dataKey="current" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorCurrent)" name="Current Year" />
-                <Area type="monotone" dataKey="prev" stroke="#666" strokeWidth={2} fill="transparent" strokeDasharray="5 5" name="Previous Year" />
-              </AreaChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        <div className="col-span-2 border border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+              <Bell className="w-3.5 h-3.5 text-muted-foreground" /> Needs Attention
+            </h3>
+            <Link to="/notifications" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+              View All <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Nothing urgent right now.
           </div>
         </div>
 
-        <div className="border border-border p-5 bg-background">
-          <h3 className="text-sm font-medium mb-6">Datacenter Capacity (Cloud)</h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={nodesData} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                <YAxis dataKey="name" type="category" stroke="#666" fontSize={12} tickLine={false} axisLine={false} width={70} />
-                <Tooltip 
-                  cursor={{ fill: '#333', opacity: 0.2 }}
-                  contentStyle={{ backgroundColor: '#111', borderColor: '#333', fontSize: '12px' }}
-                  formatter={(val) => [`${val}%`, 'Allocation']}
-                />
-                <Bar dataKey="usage" radius={[0, 2, 2, 0]}>
-                  {
-                    nodesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.usage > 90 ? '#ef4444' : entry.usage > 75 ? '#eab308' : '#ffffff'} />
-                    ))
-                  }
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="border border-border bg-background">
+          <div className="px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider">Quick Actions</h3>
+          </div>
+          <div className="p-3 space-y-2">
+            <Link to="/services/new" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+              <Plus className="w-4 h-4 text-muted-foreground" /> Provision Service
+            </Link>
+            <Link to="/products/new" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+              <Plus className="w-4 h-4 text-muted-foreground" /> New Product
+            </Link>
+            <Link to="/tickets/new" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+              <Plus className="w-4 h-4 text-muted-foreground" /> Create Ticket
+            </Link>
+            <Link to="/billing/invoices" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+              <CreditCard className="w-4 h-4 text-muted-foreground" /> Generate Invoice
+            </Link>
+            <Link to="/launchpad" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+              <ExternalLink className="w-4 h-4 text-muted-foreground" /> Internal Tools
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        <div className="col-span-2 border border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" /> Recent Activity
+            </h3>
+            <Link to="/activity" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+              Full Log <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No recent activity recorded.
+          </div>
+        </div>
+
+        <div className="border border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+              <LifeBuoy className="w-3.5 h-3.5 text-muted-foreground" /> Ticket Queue
+            </h3>
+            <Link to="/tickets" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+              Open <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No open tickets.
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 border border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" /> Revenue
+            </h3>
+            <Link to="/reports" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+              Full Report <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Revenue charts will populate as billing data accumulates.
+          </div>
+        </div>
+
+        <div className="border border-border bg-background">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-foreground/5">
+            <h3 className="text-xs font-medium uppercase tracking-wider flex items-center gap-2">
+              <Plug className="w-3.5 h-3.5 text-muted-foreground" /> Connectors
+            </h3>
+            <Link to="/connectors/apis" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+              Manage <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            <Link to="/connectors/apis" className="hover:text-foreground">Configure connectors to see health status.</Link>
           </div>
         </div>
       </div>
