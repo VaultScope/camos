@@ -1,8 +1,22 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 class ApiClient {
+  private csrfToken: string | null = null;
+  private csrfPromise: Promise<void> | null = null;
+
   private getToken(): string | null {
     return localStorage.getItem('vs_admin_token');
+  }
+
+  private async fetchCsrfToken() {
+    if (this.csrfPromise) return this.csrfPromise;
+    this.csrfPromise = fetch(`${API_BASE}/csrf`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        this.csrfToken = data.token;
+      })
+      .catch(console.error);
+    return this.csrfPromise;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -15,7 +29,14 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    if (options.method && options.method !== 'GET' && options.method !== 'HEAD') {
+      if (!this.csrfToken) await this.fetchCsrfToken();
+      if (this.csrfToken) {
+        headers['x-csrf-token'] = this.csrfToken;
+      }
+    }
+
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
 
     if (res.status === 401) {
       localStorage.removeItem('vs_admin_token');
