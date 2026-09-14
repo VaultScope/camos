@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>CAMOS Dev Login</title></head>
+<body>
+<script>
+  // Dev-only: inject admin session for local development without Authentik
+  const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQHZhdWx0c2NvcGUuZGUiLCJyb2xlIjoiYWRtaW4iLCJhdWRpZW5jZSI6ImFkbWluIiwiZXhwIjoxNzg4OTU5OTU3LCJpYXQiOjE3ODg4NzM1NTd9.6Loc_1wLc84QUChj3DDGf4_xFNNzTzp1wX-Z-GeCtb8";
+  const claims = {
+    sub: "11111111-1111-1111-1111-111111111111",
+    email: "admin@vaultscope.de",
+    role: "admin",
+    audience: "admin",
+    permissions: ["*"],
+    exp: 1788959957,
+    iat: 1788873557
+  };
+  localStorage.setItem("vs_admin_token", token);
+  localStorage.setItem("vs_admin_claims", JSON.stringify(claims));
+  window.location.href = "/";
+</script>
+</body>
+</html>
