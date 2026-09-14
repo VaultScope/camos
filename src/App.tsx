@@ -20,12 +20,12 @@ import Launchpad from './pages/Launchpad';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import EmailLogs from './pages/EmailLogs';
-import ConfigOptions from './pages/ConfigOptions';
 import ActivityLog from './pages/ActivityLog';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import EmailTemplates from './pages/EmailTemplates';
+import InternalTools from './pages/InternalTools';
 
 export default function App() {
   return (
@@ -50,7 +50,6 @@ export default function App() {
                   <Route path="/services/*" element={<Services />} />
                   <Route path="/products/*" element={<Products />} />
                   <Route path="/forms" element={<ServiceForms />} />
-                  <Route path="/config-options" element={<ConfigOptions />} />
                   <Route path="/jobs" element={<JobQueue />} />
                   <Route path="/email-logs" element={<EmailLogs />} />
                   <Route path="/connectors/*" element={<Connectors />} />
@@ -60,6 +59,7 @@ export default function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/email-templates" element={<EmailTemplates />} />
+                  <Route path="/internal-tools" element={<InternalTools />} />
                     </Routes>
                   </main>
                 </div>
