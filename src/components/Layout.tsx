@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Users, Server, HardDrive, DollarSign, Plug, Activity, LogOut, LifeBuoy, ListTree, Tag, ExternalLink, Mail, MailOpen, FileText, ChevronDown, Sliders, Bell, History, BarChart3, Settings } from 'lucide-react';
+import { Users, Server, HardDrive, DollarSign, Plug, Activity, LogOut, LifeBuoy, ListTree, Tag, ExternalLink, Mail, MailOpen, FileText, ChevronDown, Bell, History, BarChart3, Settings, Shield } from 'lucide-react';
 import { getStoredClaims, logout } from '../lib/auth';
+import { useApi } from '../lib/hooks';
+import type { InternalTool, Role } from '../lib/types';
 
 function SidebarItem({ link, location, isExpanded, onToggle }: { link: any, location: any, isExpanded: boolean, onToggle: () => void }) {
   const isActive = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
@@ -58,6 +60,17 @@ function SidebarItem({ link, location, isExpanded, onToggle }: { link: any, loca
 export function Sidebar() {
   const location = useLocation();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  const { data: internalTools } = useApi<InternalTool[]>('/admin/internal-tools');
+  const { data: roles } = useApi<Role[]>('/admin/staff/roles');
+  
+  const claims = getStoredClaims();
+  const currentRole = roles?.find(r => r.name === claims?.role);
+  const userPermissions = currentRole?.permissions || [];
+  
+  const visibleTools = internalTools?.filter(t => 
+    userPermissions.includes('*') || userPermissions.includes(t.required_permission)
+  ) || [];
 
   const toggleItem = (name: string) => {
     setExpandedItem(prev => prev === name ? null : name);
@@ -117,7 +130,6 @@ export function Sidebar() {
         },
         { name: 'Provisioning Queue', path: '/jobs', icon: ListTree },
         { name: 'Service Forms', path: '/forms', icon: FileText },
-        { name: 'Config Options', path: '/config-options', icon: Sliders },
       ]
     },
     {
@@ -128,8 +140,7 @@ export function Sidebar() {
             { name: 'Authentication', path: '/connectors/authentication' },
             { name: 'Billing', path: '/connectors/billing' },
             { name: 'APIs', path: '/connectors/apis' },
-            { name: 'Mail', path: '/connectors/mail' },
-            { name: 'Mailboxes', path: '/connectors/mail/mailboxes' }
+            { name: 'Mail', path: '/connectors/mail' }
           ]
         },
         { name: 'Staff & RBAC', path: '/staff', icon: Users,
@@ -176,23 +187,30 @@ export function Sidebar() {
             ))}
           </div>
         ))}
-        <div className="mt-2">
-          <div className="px-6 pt-4 pb-1">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Quick Links</span>
+        {visibleTools.length > 0 && (
+          <div className="mt-2">
+            <div className="px-6 pt-4 pb-1">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Internal Tools</span>
+            </div>
+            {visibleTools.map(tool => (
+              <a
+                key={tool.id}
+                href={tool.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 px-6 py-3 text-sm transition-colors text-muted-foreground hover:bg-foreground/[0.02]"
+              >
+                <ExternalLink className="w-4 h-4" /> {tool.name}
+              </a>
+            ))}
           </div>
-          <Link
-            to="/launchpad"
-            className={`flex items-center gap-3 px-6 py-3 text-sm transition-colors ${location.pathname === '/launchpad' ? 'bg-foreground/5 font-medium border-r-2 border-foreground' : 'text-muted-foreground hover:bg-foreground/[0.02]'}`}
-          >
-            <ExternalLink className="w-4 h-4" /> Internal Tools
-          </Link>
-        </div>
+        )}
       </div>
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between text-sm">
           <Link to="/staff/account" className="flex flex-col hover:opacity-80 transition-opacity">
-            <span className="font-medium">{getStoredClaims()?.email?.split('@')[0] || 'Admin User'}</span>
-            <span className="text-xs text-muted-foreground">{getStoredClaims()?.role || 'Super Admin'}</span>
+            <span className="font-medium">{claims?.email?.split('@')[0] || 'Admin User'}</span>
+            <span className="text-xs text-muted-foreground">{claims?.role || 'Owner'}</span>
           </Link>
           <button onClick={logout} className="p-2 text-muted-foreground hover:text-foreground cursor-pointer">
             <LogOut className="w-4 h-4" />
@@ -203,7 +221,21 @@ export function Sidebar() {
   );
 }
 
-export function Page({ title, children }: { title: string, children: React.ReactNode }) {
+import { hasPermission } from '../lib/auth';
+
+export function Page({ title, children, requiredPermission }: { title: string, children: React.ReactNode, requiredPermission?: string }) {
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return (
+      <div className="ml-64 p-8 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-medium mb-2">Access Denied</h2>
+          <p className="text-sm text-muted-foreground">You do not have the required permissions ({requiredPermission}) to view this page.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ml-64 p-8 min-h-screen">
       <div className="mb-8">
@@ -213,3 +245,5 @@ export function Page({ title, children }: { title: string, children: React.React
     </div>
   );
 }
+
+
