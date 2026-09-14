@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Plus, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
@@ -17,18 +18,29 @@ export default function BillingInvoices() {
   const { data: invoices, loading, error, refetch } = useApi<Invoice[]>('/admin/invoices');
   const { data: customers } = useApi<Customer[]>('/admin/customers');
   const toast = useToast();
-  const [showModal, setShowModal] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showModal, setShowModal] = useState(searchParams.get('new') === 'true');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [creating, setCreating] = useState(false);
 
-  const [form, setForm] = useState({
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      const timer = setTimeout(() => {
+        setShowModal(true);
+        setSearchParams({});
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
+
+  const [form, setForm] = useState(() => ({
     customer_id: '',
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     tax_rate: 19,
     notes: '',
     line_items: [{ description: '', quantity: 1, unit_price: 0 }] as LineItemForm[],
-  });
+  }));
 
   const handleAddLineItem = () => {
     setForm({

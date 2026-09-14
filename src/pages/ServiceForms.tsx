@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
 import { Plus, Settings, Trash2, Edit2, X, GripVertical, Check } from 'lucide-react';
+import { useApi } from '../lib/hooks';
+import { api } from '../lib/api';
 
 export default function ServiceForms() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -8,36 +10,7 @@ export default function ServiceForms() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [forms, setForms] = useState([
-    {
-      id: 'f_1',
-      name: 'VPS Configuration',
-      description: 'Standard fields required when purchasing any Hetzner Cloud VPS.',
-      fields: [
-        { id: 'f_1_1', label: 'Operating System', variable: 'os_image', type: 'select', required: true, options: 'Ubuntu 22.04, Debian 12, Rocky Linux 9, Windows Server 2022' },
-        { id: 'f_1_2', label: 'Datacenter Location', variable: 'datacenter', type: 'select', required: true, options: 'Falkenstein (FSN1), Nuremberg (NBG1), Helsinki (HEL1), Ashburn (ASH)' },
-        { id: 'f_1_3', label: 'SSH Key (Optional)', variable: 'ssh_key_id', type: 'ssh_key_selector', required: false, options: '' },
-      ]
-    },
-    {
-      id: 'f_2',
-      name: 'Dedicated Server Setup',
-      description: 'Root password and OS for BareMetal provisioning.',
-      fields: [
-        { id: 'f_2_1', label: 'Operating System', variable: 'os', type: 'select', required: true, options: 'Ubuntu 24.04, Proxmox VE 8, Debian 12' },
-        { id: 'f_2_2', label: 'Root Password', variable: 'root_password', type: 'password', required: true, options: '' },
-      ]
-    },
-    {
-      id: 'f_3',
-      name: 'Pterodactyl Variables',
-      description: 'Environment variables required for game servers.',
-      fields: [
-        { id: 'f_3_1', label: 'Server Name', variable: 'SERVER_NAME', type: 'text', required: true, options: '' },
-        { id: 'f_3_2', label: 'Minecraft Version', variable: 'MINECRAFT_VERSION', type: 'text', required: true, options: 'latest' },
-      ]
-    }
-  ]);
+  const { data: forms, refetch } = useApi<any[]>('/admin/service-forms');
 
   const [currentForm, setCurrentForm] = useState({
     id: '',
@@ -46,7 +19,7 @@ export default function ServiceForms() {
     fields: [] as any[]
   });
 
-  const filteredForms = forms.filter(f => 
+  const filteredForms = (forms || []).filter(f => 
     f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     f.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -87,17 +60,34 @@ export default function ServiceForms() {
     });
   };
 
-  const handleSaveForm = () => {
-    if (modalMode === 'create') {
-      setForms([currentForm, ...forms]);
-    } else {
-      setForms(forms.map(f => f.id === currentForm.id ? currentForm : f));
+  const handleSaveForm = async () => {
+    try {
+      const payload = {
+        name: currentForm.name,
+        description: currentForm.description,
+        fields: currentForm.fields
+      };
+      if (modalMode === 'create') {
+        await api.post('/admin/service-forms', payload);
+      } else {
+        await api.put(`/admin/service-forms/${currentForm.id}`, payload);
+      }
+      setIsModalOpen(false);
+      refetch();
+    } catch (err: any) {
+      console.error(err);
+      alert('Error: ' + JSON.stringify(err.message || err));
     }
-    setIsModalOpen(false);
   };
 
-  const handleDeleteForm = (id: string) => {
-    setForms(forms.filter(f => f.id !== id));
+  const handleDeleteForm = async (id: string) => {
+    try {
+      await api.delete(`/admin/service-forms/${id}`);
+      refetch();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete service form');
+    }
   };
 
   return (
@@ -150,7 +140,7 @@ export default function ServiceForms() {
                 <div className="col-span-3">Options</div>
               </div>
               <div className="divide-y divide-border">
-                {form.fields.map(field => (
+                {form.fields.map((field: any) => (
                   <div key={field.id} className="px-4 py-3 text-sm grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-3 font-medium">{field.label}</div>
                     <div className="col-span-3 font-mono text-xs text-muted-foreground">{field.variable}</div>

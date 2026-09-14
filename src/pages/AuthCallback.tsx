@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { handleCallback } from '../lib/auth';
 
@@ -6,8 +6,12 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const isProcessing = useRef(false);
 
   useEffect(() => {
+    if (isProcessing.current) return;
+    isProcessing.current = true;
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 

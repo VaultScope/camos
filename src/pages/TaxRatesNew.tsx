@@ -109,13 +109,20 @@ export default function TaxRatesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Country *</label>
-                <input
-                  type="text"
+                <select
                   value={form.country}
                   onChange={e => setForm({ ...form, country: e.target.value })}
                   className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
-                  placeholder="e.g. Germany"
-                />
+                >
+                  <option value="">Select country...</option>
+                  <option value="ALL">ALL (Global)</option>
+                  <option value="United States">United States</option>
+                  <option value="Germany">Germany</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="France">France</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Australia">Australia</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Rate (%) *</label>

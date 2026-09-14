@@ -6,50 +6,59 @@ import type { Setting } from '../lib/types';
 
 export default function Settings() {
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
-    companyName: 'VaultScope',
-    legalName: 'VaultScope GmbH',
-    storefrontUrl: 'https://vaultscope.de',
-    adminUrl: 'https://admin.vaultscope.de',
-    addressStreet: 'Musterstraße 1',
-    addressCity: 'Berlin',
-    addressState: 'Berlin',
-    addressPostal: '10115',
+    companyName: '',
+    legalName: '',
+    storefrontUrl: '',
+    adminUrl: '',
+    addressStreet: '',
+    addressCity: '',
+    addressState: '',
+    addressPostal: '',
     addressCountry: 'DE',
-    phone: '+49 30 1234567',
-    vatId: 'DE123456789',
-    taxNumber: '27/123/45678',
-    registrationNumber: 'HRB 12345',
-    registrationCourt: 'Amtsgericht Berlin-Charlottenburg',
+    phone: '',
+    vatId: '',
+    taxNumber: '',
+    registrationNumber: '',
+    registrationCourt: '',
     currency: 'EUR',
     currencySymbol: '€',
     timezone: 'Europe/Berlin',
     locale: 'de-DE',
     dateFormat: 'DD.MM.YYYY',
-    smtpSender: 'noreply@vaultscope.de',
-    smtpReplyTo: 'support@vaultscope.de',
-    smtpFromName: 'VaultScope',
+    smtpHost: '',
+    smtpPort: 587,
+    smtpUser: '',
+    smtpPass: '',
+    smtpSender: '',
+    smtpReplyTo: '',
+    smtpFromName: '',
+    oidcClientId: '',
+    oidcClientSecret: '',
+    oidcIssuerUrl: '',
     taxMode: 'exclusive',
     defaultTaxRate: 19,
     reverseChargeEnabled: true,
     invoicePrefix: 'INV',
     invoiceNextNumber: 901,
     invoiceDueDays: 14,
-    invoiceFooter: 'Thank you for choosing VaultScope. Payment is due within 14 days.',
-    bankName: 'Deutsche Bank',
-    bankIban: 'DE89 3704 0044 0532 0130 00',
-    bankBic: 'COBADEFFXXX',
-    bankAccountHolder: 'VaultScope GmbH',
-    paymentMethods: 'Stripe (Card, SEPA)',
-    logoUrl: '/logo.png',
-    faviconUrl: '/favicon.ico',
+    invoiceFooter: '',
+    bankName: '',
+    bankIban: '',
+    bankBic: '',
+    bankAccountHolder: '',
+    paymentMethods: '',
+    logoUrl: '',
+    faviconUrl: '',
     brandColor: '#6366f1',
-    supportEmail: 'support@vaultscope.de',
-    supportPhone: '+49 30 1234567',
-    supportHours: 'Mon–Fri 09:00–18:00 CET',
-    tosUrl: 'https://vaultscope.de/tos',
-    privacyUrl: 'https://vaultscope.de/privacy',
-    imprintUrl: 'https://vaultscope.de/imprint',
+    supportEmail: '',
+    supportPhone: '',
+    supportHours: '',
+    tosUrl: '',
+    privacyUrl: '',
+    imprintUrl: '',
+    refundUrl: '',
     gracePeriodDays: 3,
     autoSuspendEnabled: true,
     autoTerminateDays: 14,
@@ -57,6 +66,13 @@ export default function Settings() {
     sessionTimeout: 60,
     maxLoginAttempts: 5,
     requireMfaStaff: true,
+    stripe_live_public_key: '',
+    stripe_live_secret_key: '',
+    stripe_webhook_secret: '',
+    stripe_sandbox_public_key: '',
+    stripe_sandbox_secret_key: '',
+    stripe_sandbox_mode: false,
+    custom_domain: '',
   });
 
   useEffect(() => {
@@ -64,7 +80,10 @@ export default function Settings() {
       const mapped: Record<string, any> = {};
       data.forEach((s) => { mapped[s.key] = s.value; });
       setSettings((prev) => ({ ...prev, ...mapped }));
-    }).catch(() => {});
+      setLoading(false);
+    }).catch(() => {
+      setLoading(false);
+    });
   }, []);
 
   const handleSave = () => {
@@ -78,8 +97,16 @@ export default function Settings() {
     setSettings({ ...settings, [key]: value });
   };
 
+  if (loading) {
+    return (
+      <Page title="Global Settings" requiredPermission="settings.manage">
+        <div className="p-8 text-center text-muted-foreground text-sm">Loading settings...</div>
+      </Page>
+    );
+  }
+
   return (
-    <Page title="Global Settings">
+    <Page title="Global Settings" requiredPermission="settings.manage">
       <div className="max-w-3xl">
         <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
           <p className="text-sm text-muted-foreground">System-wide configuration for CAMOS and VaultScope.</p>
@@ -232,10 +259,49 @@ export default function Settings() {
             </div>
           </section>
 
+          {/* Authentication */}
+          <section>
+            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Authentication (OIDC)</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Issuer URL</label>
+                  <input type="text" value={settings.oidcIssuerUrl} onChange={e => update('oidcIssuerUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://auth.vaultscope.de" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Client ID</label>
+                  <input type="text" value={settings.oidcClientId} onChange={e => update('oidcClientId', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Client Secret</label>
+                  <input type="password" value={settings.oidcClientSecret} onChange={e => update('oidcClientSecret', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* Email */}
           <section>
             <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Email & Transactional</h3>
             <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Host</label>
+                  <input type="text" value={settings.smtpHost} onChange={e => update('smtpHost', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="smtp.example.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Port</label>
+                  <input type="number" value={settings.smtpPort} onChange={e => update('smtpPort', Number(e.target.value))} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="587" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP User</label>
+                  <input type="text" value={settings.smtpUser} onChange={e => update('smtpUser', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Password</label>
+                  <input type="password" value={settings.smtpPass} onChange={e => update('smtpPass', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                </div>
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">From Name</label>
@@ -377,18 +443,24 @@ export default function Settings() {
                   <input type="text" value={settings.supportHours} onChange={e => update('supportHours', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Terms of Service URL</label>
-                  <input type="url" value={settings.tosUrl} onChange={e => update('tosUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <input type="url" value={settings.tosUrl} onChange={e => update('tosUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/tos" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Privacy Policy URL</label>
-                  <input type="url" value={settings.privacyUrl} onChange={e => update('privacyUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <input type="url" value={settings.privacyUrl} onChange={e => update('privacyUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/privacy" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Refund Policy URL</label>
+                  <input type="url" value={settings.refundUrl} onChange={e => update('refundUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/refund" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Imprint URL</label>
-                  <input type="url" value={settings.imprintUrl} onChange={e => update('imprintUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <input type="url" value={settings.imprintUrl} onChange={e => update('imprintUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/imprint" />
                 </div>
               </div>
             </div>
@@ -438,6 +510,18 @@ export default function Settings() {
               </div>
             </div>
           </section>
+          {/* Domain Settings */}
+          <section>
+            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Domain Settings</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Custom Storefront Domain</label>
+                <input type="text" value={settings.custom_domain} onChange={e => update('custom_domain', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="vaultscope.de" />
+              </div>
+            </div>
+          </section>
+
+          
         </div>
       </div>
     </Page>

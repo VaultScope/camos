@@ -13,6 +13,9 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { data: stats, loading } = useApi<DashboardStats>('/admin/dashboard/stats');
+  const { data: notifications } = useApi<any[]>('/admin/notifications');
+  const { data: activities } = useApi<any[]>('/admin/activity');
+  const { data: tickets } = useApi<any[]>('/admin/tickets');
 
   return (
     <Page title="Dashboard">
@@ -54,8 +57,19 @@ export default function Dashboard() {
               View All <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Nothing urgent right now.
+          <div className="p-6 text-sm text-muted-foreground">
+            {notifications && notifications.length > 0 ? (
+              <div className="space-y-3">
+                {notifications.slice(0, 5).map(n => (
+                  <div key={n.id} className="flex justify-between items-center">
+                    <span>{n.title}</span>
+                    <span className="text-xs">{new Date(n.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center flex items-center justify-center gap-2"><CheckCircle2 className="w-4 h-4" /> Nothing urgent right now.</div>
+            )}
           </div>
         </div>
 
@@ -73,7 +87,7 @@ export default function Dashboard() {
             <Link to="/tickets/new" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
               <Plus className="w-4 h-4 text-muted-foreground" /> Create Ticket
             </Link>
-            <Link to="/billing/invoices" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
+            <Link to="/billing/invoices?new=true" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
               <CreditCard className="w-4 h-4 text-muted-foreground" /> Generate Invoice
             </Link>
             <Link to="/launchpad" className="flex items-center gap-3 px-3 py-2.5 border border-border hover:bg-foreground/5 transition-colors text-sm">
@@ -93,8 +107,19 @@ export default function Dashboard() {
               Full Log <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="p-6 text-center text-sm text-muted-foreground">
-            No recent activity recorded.
+          <div className="p-6 text-sm text-muted-foreground">
+            {activities && activities.length > 0 ? (
+              <div className="space-y-3">
+                {activities.slice(0, 5).map(a => (
+                  <div key={a.id} className="flex justify-between items-center">
+                    <span>{a.actor_name}: {a.action} {a.target}</span>
+                    <span className="text-xs">{new Date(a.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center">No recent activity recorded.</div>
+            )}
           </div>
         </div>
 
@@ -107,8 +132,19 @@ export default function Dashboard() {
               Open <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="p-6 text-center text-sm text-muted-foreground">
-            No open tickets.
+          <div className="p-6 text-sm text-muted-foreground">
+            {tickets && tickets.filter(t => t.status === 'open').length > 0 ? (
+              <div className="space-y-3">
+                {tickets.filter(t => t.status === 'open').slice(0, 5).map(t => (
+                  <Link key={t.id} to={`/tickets/${t.id}`} className="block hover:text-foreground">
+                    <div className="font-medium truncate">{t.subject}</div>
+                    <div className="text-xs mt-1">#{t.ticket_number}</div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center">No open tickets.</div>
+            )}
           </div>
         </div>
       </div>
@@ -124,7 +160,8 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Revenue charts will populate as billing data accumulates.
+             <div className="text-2xl font-light text-foreground">€{(stats?.mrr ?? 0).toLocaleString()}</div>
+             <div className="text-xs mt-1">Monthly Recurring Revenue</div>
           </div>
         </div>
 

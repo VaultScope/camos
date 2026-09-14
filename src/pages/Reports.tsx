@@ -70,20 +70,19 @@ export default function Reports() {
         <h3 className="text-sm font-medium mb-4">Data Exports</h3>
         <p className="text-xs text-muted-foreground mb-4">Download CSV files for accounting, analytics, or migration.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer opacity-50" disabled>
+          <button onClick={() => window.open('http://localhost:3000/api/admin/dashboard/export/invoices')} className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer">
             <Download className="w-4 h-4" /> Invoices
           </button>
           <button className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer opacity-50" disabled>
             <Download className="w-4 h-4" /> Revenue
           </button>
-          <button className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer opacity-50" disabled>
+          <button onClick={() => window.open('http://localhost:3000/api/admin/dashboard/export/customers')} className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer">
             <Download className="w-4 h-4" /> Customers
           </button>
           <button className="flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm hover:bg-foreground/5 transition-colors cursor-pointer opacity-50" disabled>
             <Download className="w-4 h-4" /> Services
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-3">Export functionality will be available once reporting endpoints are implemented.</p>
       </div>
     </Page>
   );

@@ -110,10 +110,13 @@ function ServicesList() {
   );
 }
 
+import ServiceNew from './ServiceNew';
+
 export default function ServicesRouter() {
   return (
     <Routes>
       <Route path="/" element={<ServicesList />} />
+      <Route path="new" element={<ServiceNew />} />
       <Route path=":id" element={<ServiceDetail />} />
     </Routes>
   );

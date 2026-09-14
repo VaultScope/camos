@@ -1,9 +1,24 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { ArrowLeft, Eye, Save, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Eye, Save, ToggleLeft, ToggleRight, Copy } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { EmailTemplate } from '../lib/types';
+import { WysiwygEditor } from '../components/WysiwygEditor';
+import { useToast } from '../components/Toast';
+
+const GLOBAL_VARIABLES = [
+  { key: 'company_name', label: 'Company Name' },
+  { key: 'company_address', label: 'Company Address' },
+  { key: 'company_email', label: 'Company Email' },
+  { key: 'company_phone', label: 'Company Phone' },
+  { key: 'tos_url', label: 'Terms of Service URL' },
+  { key: 'privacy_url', label: 'Privacy Policy URL' },
+  { key: 'refund_url', label: 'Refund Policy URL' },
+  { key: 'imprint_url', label: 'Imprint URL' },
+  { key: 'storefront_url', label: 'Storefront URL' },
+  { key: 'current_year', label: 'Current Year' },
+];
 
 const categoryLabels: Record<string, string> = {
   billing: 'Billing',
@@ -15,9 +30,12 @@ const categoryLabels: Record<string, string> = {
 
 export default function EmailTemplatesPage() {
   const { data: templates, loading, error, refetch } = useApi<EmailTemplate[]>('/admin/email-templates');
+  const { data: mailboxes } = useApi<any[]>('/admin/mailboxes');
+  const toast = useToast();
   const [editing, setEditing] = useState<string | null>(null);
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [editMailboxId, setEditMailboxId] = useState<string>('');
   const [previewing, setPreviewing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -28,12 +46,13 @@ export default function EmailTemplatesPage() {
     setEditing(t.id);
     setEditSubject(t.subject);
     setEditBody(t.body);
+    setEditMailboxId(t.mailbox_id || '');
     setPreviewing(false);
   };
 
   const handleSave = async () => {
     if (!editing) return;
-    await api.put(`/admin/email-templates/${editing}`, { subject: editSubject, body: editBody });
+    await api.put(`/admin/email-templates/${editing}`, { subject: editSubject, body: editBody, mailbox_id: editMailboxId || null });
     setSaved(true);
     refetch();
     setTimeout(() => setSaved(false), 2000);
@@ -42,6 +61,13 @@ export default function EmailTemplatesPage() {
   const toggleEnabled = async (t: EmailTemplate) => {
     await api.put(`/admin/email-templates/${t.id}`, { enabled: !t.enabled });
     refetch();
+  };
+
+  const copyVar = (varKey: string) => {
+    const text = `{{${varKey}}}`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`Copied ${text} to clipboard`);
+    });
   };
 
   const currentTemplate = items.find(t => t.id === editing);
@@ -53,81 +79,125 @@ export default function EmailTemplatesPage() {
   })).filter(g => g.items.length > 0);
 
   if (editing && currentTemplate) {
+    const templateVars: string[] = Array.isArray(currentTemplate.variables)
+      ? currentTemplate.variables
+      : [];
+
     return (
-      <Page title="Email Templates">
+      <Page title="Email Templates" requiredPermission="templates.manage">
         <button onClick={() => setEditing(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer">
           <ArrowLeft className="w-4 h-4" /> Back to templates
         </button>
 
-        <div className="max-w-4xl">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-medium">{currentTemplate.name}</h3>
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">{categoryLabels[currentTemplate.category] || currentTemplate.category}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPreviewing(!previewing)}
-                className={`flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer ${previewing ? 'bg-foreground/5' : ''}`}
-              >
-                <Eye className="w-4 h-4" /> {previewing ? 'Edit' : 'Preview'}
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
-              >
-                <Save className="w-4 h-4" /> {saved ? 'Saved' : 'Save'}
-              </button>
-            </div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium">{currentTemplate.name}</h3>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">{categoryLabels[currentTemplate.category] || currentTemplate.category}</span>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setPreviewing(!previewing)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer ${previewing ? 'bg-foreground/5' : ''}`}
+            >
+              <Eye className="w-4 h-4" /> {previewing ? 'Edit' : 'Preview'}
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
+            >
+              <Save className="w-4 h-4" /> {saved ? 'Saved!' : 'Save'}
+            </button>
+          </div>
+        </div>
 
-          {previewing ? (
-            <div className="border border-border bg-background">
-              <div className="p-4 border-b border-border bg-foreground/5">
-                <div className="text-xs text-muted-foreground uppercase mb-1">Subject</div>
-                <div className="text-sm font-medium">{editSubject}</div>
-              </div>
-              <div className="p-6 text-sm whitespace-pre-wrap leading-relaxed">{editBody}</div>
+        {previewing ? (
+          <div className="border border-border bg-background">
+            <div className="p-4 border-b border-border bg-foreground/5">
+              <div className="text-xs text-muted-foreground uppercase mb-1">Subject</div>
+              <div className="text-sm font-medium">{editSubject}</div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Subject Line</label>
-                <input
-                  type="text"
-                  value={editSubject}
-                  onChange={e => setEditSubject(e.target.value)}
-                  className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
-                />
+            <div className="p-6 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: editBody }} />
+          </div>
+        ) : (
+          <div className="flex gap-6">
+            {/* Editor */}
+            <div className="flex-1 min-w-0 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Subject Line</label>
+                  <input
+                    type="text"
+                    value={editSubject}
+                    onChange={e => setEditSubject(e.target.value)}
+                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Mailbox Override</label>
+                  <select
+                    value={editMailboxId}
+                    onChange={e => setEditMailboxId(e.target.value)}
+                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                  >
+                    <option value="">Default Mailbox</option>
+                    {mailboxes?.map(mb => (
+                      <option key={mb.id} value={mb.id}>{mb.name} ({mb.email})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Body</label>
-                <textarea
-                  value={editBody}
-                  onChange={e => setEditBody(e.target.value)}
-                  rows={16}
-                  className="w-full border border-border bg-transparent p-3 text-sm focus:outline-none focus:border-foreground font-mono leading-relaxed resize-y"
-                />
+                <WysiwygEditor content={editBody} onChange={setEditBody} />
               </div>
-              {Array.isArray(currentTemplate.variables) && currentTemplate.variables.length > 0 && (
-                <div className="border border-border p-4 bg-foreground/[0.02]">
-                  <div className="text-xs font-medium text-muted-foreground uppercase mb-2">Template Variables</div>
-                  <div className="flex flex-wrap gap-2">
-                    {currentTemplate.variables.map(v => (
-                      <code key={v} className="text-xs px-2 py-1 border border-border bg-background font-mono">{`{{${v}}}`}</code>
+            </div>
+
+            {/* Variables Sidebar */}
+            <div className="w-72 shrink-0 space-y-4">
+              <div className="border border-border bg-background p-4">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Global Variables</h4>
+                <p className="text-xs text-muted-foreground mb-3">Available in all templates. Click to copy.</p>
+                <div className="space-y-1.5">
+                  {GLOBAL_VARIABLES.map(v => (
+                    <button
+                      key={v.key}
+                      onClick={() => copyVar(v.key)}
+                      className="w-full flex items-center justify-between px-2 py-1.5 border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
+                    >
+                      <span className="font-mono text-xs text-foreground">{`{{${v.key}}}`}</span>
+                      <Copy className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {templateVars.length > 0 && (
+                <div className="border border-border bg-background p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Template Variables</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Specific to this template.</p>
+                  <div className="space-y-1.5">
+                    {templateVars.map((v: string) => (
+                      <button
+                        key={v}
+                        onClick={() => copyVar(v)}
+                        className="w-full flex items-center justify-between px-2 py-1.5 border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
+                      >
+                        <span className="font-mono text-xs text-foreground">{`{{${v}}}`}</span>
+                        <Copy className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </Page>
     );
   }
 
   return (
-    <Page title="Email Templates">
+    <Page title="Email Templates" requiredPermission="templates.manage">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Manage transactional email templates sent to customers.</p>
         <select

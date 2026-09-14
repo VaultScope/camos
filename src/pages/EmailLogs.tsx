@@ -1,14 +1,9 @@
-import { useState } from 'react';
 import { Page } from '../components/Layout';
 import { Mail, Search, CheckCircle, XCircle } from 'lucide-react';
+import { useApi } from '../lib/hooks';
 
 export default function EmailLogs() {
-  const [logs] = useState([
-    { id: 'msg_001', to: 'customer@example.com', subject: 'Invoice INV-2026-0899', status: 'Delivered', time: '10 min ago', mailbox: 'noreply@vaultscope.de' },
-    { id: 'msg_002', to: 'abuse-reporter@domain.com', subject: 'Re: Port scanning from IP 192.168.1.5 - Ticket Created', status: 'Delivered', time: '15 min ago', mailbox: 'abuse@vaultscope.de' },
-    { id: 'msg_003', to: 'support-requester@domain.com', subject: 'Re: Network latency on FRA-1 node - Ticket Created', status: 'Delivered', time: '1 hour ago', mailbox: 'support@vaultscope.de' },
-    { id: 'msg_004', to: 'bounced-user@example.com', subject: 'Welcome to VaultScope', status: 'Bounced', time: '2 hours ago', mailbox: 'noreply@vaultscope.de' },
-  ]);
+  const { data: logs } = useApi<any[]>('/admin/email-logs');
 
   return (
     <Page title="Email Logs & Notifications">
@@ -44,7 +39,7 @@ export default function EmailLogs() {
           <div className="text-right">Time</div>
         </div>
         
-        {logs.map(log => (
+        {(logs ?? []).map(log => (
           <div key={log.id} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02] cursor-pointer">
             <div className="col-span-2 flex items-center gap-2">
               <Mail className="w-4 h-4 text-muted-foreground" />
@@ -55,7 +50,7 @@ export default function EmailLogs() {
               <span className="text-xs text-muted-foreground">From: {log.mailbox}</span>
             </div>
             <div>
-              <span className={`flex items-center gap-1 \${log.status === 'Delivered' ? 'text-green-500' : 'text-red-500'}`}>
+              <span className={`flex items-center gap-1 ${log.status === 'Delivered' ? 'text-green-500' : 'text-red-500'}`}>
                 {log.status === 'Delivered' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                 {log.status}
               </span>

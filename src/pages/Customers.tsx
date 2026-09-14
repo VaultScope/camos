@@ -59,36 +59,39 @@ function CustomerList() {
 
       {!loading && !error && (
         <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
+          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-8 text-muted-foreground">
             <div className="col-span-2">Customer</div>
             <div>Status</div>
             <div>Country</div>
             <div>Company</div>
-            <div>Security</div>
+            <div className="text-center">Active Services</div>
             <div className="text-right">Since</div>
+            <div className="text-right">Actions</div>
           </div>
           {filtered.map(c => (
-            <Link key={c.id} to={`/customers/${c.id}`} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02] transition-colors">
-              <div className="col-span-2 flex flex-col">
-                <span className="font-medium">{c.name}</span>
-                <span className="text-xs text-muted-foreground">{c.email}</span>
-              </div>
+            <div key={c.id} className="p-4 text-sm grid grid-cols-8 items-center hover:bg-foreground/[0.02]">
+              <Link to={`/customers/${c.id}`} className="col-span-2">
+                <div className="font-medium hover:underline">{c.name}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  {c.email}
+                  {c.email_verified && <span className="text-green-500 text-[10px]" title="Verified">✓</span>}
+                </div>
+              </Link>
               <div>
                 <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider border border-border ${c.status === 'active' ? 'text-green-500 bg-green-500/5' : c.status === 'suspended' ? 'text-yellow-500 bg-yellow-500/5' : 'text-red-500 bg-red-500/5'}`}>
                   {c.status}
                 </span>
               </div>
-              <div className="text-muted-foreground">{c.country || '—'}</div>
-              <div className="text-muted-foreground">{c.company || '—'}</div>
-              <div>
-                {c.two_factor_enabled ? (
-                  <span className="text-xs border border-border px-1.5 py-0.5 bg-foreground/5 text-muted-foreground">2FA On</span>
-                ) : (
-                  <span className="text-xs border border-border px-1.5 py-0.5 text-muted-foreground opacity-50">2FA Off</span>
-                )}
-              </div>
+              <div className="text-muted-foreground">{c.country || '-'}</div>
+              <div className="text-muted-foreground">{c.company || '-'}</div>
+              <div className="text-center font-medium">{(c as any).active_services || 0}</div>
               <div className="text-right text-xs text-muted-foreground">{c.created_at?.split('T')[0]}</div>
-            </Link>
+              <div className="flex justify-end gap-2">
+                <Link to={`/customers/${c.id}`} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit/View">
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
           ))}
           {filtered.length === 0 && (
             <div className="p-8 text-center text-muted-foreground text-sm">No customers match your filters.</div>
@@ -311,28 +314,40 @@ function CustomerDetail() {
 
       {activeTab === 'services' && (
         <div className="border border-border bg-background divide-y divide-border">
-          <div className="p-3 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-6 text-muted-foreground">
+          <div className="p-3 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
             <div className="col-span-2">Service</div>
             <div>IP</div>
             <div>Status</div>
             <div>Price</div>
             <div>Next Due</div>
+            <div className="text-right">Actions</div>
           </div>
           {customerServices.map(s => (
-            <Link key={s.id} to={`/services/${s.id}`} className="p-3 text-sm grid grid-cols-6 items-center hover:bg-foreground/[0.02]">
-              <div className="col-span-2">
-                <div className="font-medium">{s.name}</div>
+            <div key={s.id} className="p-3 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02]">
+              <Link to={`/services/${s.id}`} className="col-span-2">
+                <div className="font-medium hover:underline">{s.name}</div>
                 <div className="text-xs text-muted-foreground">{s.hostname}</div>
-              </div>
-              <div className="font-mono text-xs">{s.ip || '—'}</div>
+              </Link>
+              <div className="font-mono text-xs">{s.ip || '-'}</div>
               <div>
                 <span className={`text-[10px] px-2 py-0.5 border uppercase ${s.status === 'running' ? 'border-green-500/30 text-green-500' : s.status === 'suspended' ? 'border-yellow-500/30 text-yellow-500' : s.status === 'pending' ? 'border-blue-500/30 text-blue-500' : 'border-red-500/30 text-red-500'}`}>
                   {s.status}
                 </span>
               </div>
               <div>€{parseFloat(s.price || '0').toFixed(2)}/mo</div>
-              <div className="text-muted-foreground">{s.next_due?.split('T')[0] || '—'}</div>
-            </Link>
+              <div className="text-muted-foreground">{s.next_due?.split('T')[0] || '-'}</div>
+              <div className="flex justify-end gap-2">
+                {s.status !== 'suspended' && s.status !== 'terminated' && (
+                  <button onClick={() => { if(confirm('Force suspend this service?')) api.post(`/admin/services/${s.id}/suspend`).then(refetch) }} className="text-[10px] px-2 py-1 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 uppercase cursor-pointer" title="Force Suspend">Suspend</button>
+                )}
+                {s.status === 'suspended' && (
+                  <button onClick={() => { if(confirm('Force reactivate this service?')) api.post(`/admin/services/${s.id}/reactivate`).then(refetch) }} className="text-[10px] px-2 py-1 border border-green-500/30 text-green-500 hover:bg-green-500/10 uppercase cursor-pointer" title="Force Reactivate">Unsuspend</button>
+                )}
+                {s.status !== 'terminated' && (
+                  <button onClick={() => { if(confirm('Force TERMINATE this service? Data will be lost!')) api.post(`/admin/services/${s.id}/terminate`).then(refetch) }} className="text-[10px] px-2 py-1 border border-red-500/30 text-red-500 hover:bg-red-500/10 uppercase cursor-pointer" title="Force Terminate">Terminate</button>
+                )}
+              </div>
+            </div>
           ))}
           {customerServices.length === 0 && (
             <div className="p-6 text-center text-sm text-muted-foreground">No services.</div>

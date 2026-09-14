@@ -1,16 +1,26 @@
 import { Users } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated, redirectToLogin } from '../lib/auth';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated()) {
       navigate('/', { replace: true });
     }
   }, [navigate]);
+
+  const handleLogin = async () => {
+    try {
+      setError(null);
+      await redirectToLogin();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to initialize login');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -20,8 +30,14 @@ export default function Login() {
           Restricted Access. Authentication is strictly managed via Authentik SSO. Local passwords are disabled.
         </p>
 
+        {error && (
+          <div className="w-full mb-4 p-3 bg-red-500/10 border border-red-500/50 text-red-500 text-sm">
+            {error}
+          </div>
+        )}
+
         <button
-          onClick={redirectToLogin}
+          onClick={handleLogin}
           className="w-full flex items-center justify-center gap-3 border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
         >
           <Users className="w-5 h-5" />

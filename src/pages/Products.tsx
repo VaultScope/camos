@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Plus, X, Server, Edit2, EyeOff, BarChart2, TrendingUp, Clock } from 'lucide-react';
@@ -21,6 +21,7 @@ interface ProductFormData {
   billingCycle: string;
   setupFee: number;
   serviceFormId: string;
+  connectorId: string;
 }
 
 function toFormData(p: Product): ProductFormData {
@@ -38,6 +39,7 @@ function toFormData(p: Product): ProductFormData {
     billingCycle: p.billing_cycle === 'one_time' ? 'One-Time' : p.billing_cycle.charAt(0).toUpperCase() + p.billing_cycle.slice(1),
     setupFee: parseFloat(p.setup_fee),
     serviceFormId: p.service_form_id || '',
+    connectorId: (p as any).connector_id || '',
   };
 }
 
@@ -46,6 +48,7 @@ function toApiPayload(p: ProductFormData) {
     name: p.name,
     category: p.category,
     provider: p.provider,
+    connector_id: p.connectorId || null,
     target: p.target,
     specs: p.specs,
     cost: p.cost,
@@ -127,8 +130,12 @@ function ProductsInsights() {
 function ProductsNew() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { data: connectors } = useApi<any[]>('/admin/connectors');
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [remoteProducts, setRemoteProducts] = useState<any[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
   const [newPlan, setNewPlan] = useState<ProductFormData>({
     name: '', category: 'VPS',
     specs: {
@@ -143,8 +150,25 @@ function ProductsNew() {
     },
     provider: 'Hetzner Cloud', target: '',
     cost: 0, price: 0, stock: -1, userLimit: 0, hidden: false,
-    billingCycle: 'Monthly', setupFee: 0, serviceFormId: ''
+    billingCycle: 'Monthly', setupFee: 0, serviceFormId: '', connectorId: ''
   });
+
+
+
+  useEffect(() => {
+    if (newPlan.connectorId) {
+      setLoadingCatalog(true);
+      api.get<any[]>(`/admin/connectors/${newPlan.connectorId}/catalog`)
+        .then(res => setRemoteProducts(res))
+        .catch(err => {
+          toast.error(err.message || 'Failed to fetch catalog');
+          setRemoteProducts([]);
+        })
+        .finally(() => setLoadingCatalog(false));
+    } else {
+      setRemoteProducts([]);
+    }
+  }, [newPlan.connectorId]);
 
   const steps = ['Basics', 'Hardware', 'Pricing', 'Review'];
   const s = newPlan.specs as any;
@@ -205,12 +229,51 @@ function ProductsNew() {
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Provider</label>
                   <select value={newPlan.provider} onChange={e => setNewPlan({ ...newPlan, provider: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
-                    <option value="Hetzner Cloud">Hetzner Cloud</option>
-                    <option value="Hetzner Robot">Hetzner Robot</option>
-                    <option value="OVH BareMetal">OVH BareMetal</option>
+                    <option value="hetzner_cloud">Hetzner Cloud</option>
+                    <option value="hetzner_robot">Hetzner Robot</option>
+                    <option value="ovh">OVH BareMetal</option>
+                    <option value="pterodactyl">Pterodactyl</option>
+                    <option value="proxmox">Proxmox VE</option>
                     <option value="Custom">Custom / Manual</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Connector Instance</label>
+                  <select value={newPlan.connectorId} onChange={e => setNewPlan({ ...newPlan, connectorId: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                    <option value="">Auto / None</option>
+                    {connectors?.filter(c => c.provider === newPlan.provider || newPlan.provider === 'Custom').map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {newPlan.connectorId && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Select Remote Product</label>
+                    <select
+                      onChange={e => {
+                        const selected = remoteProducts.find(p => p.name === e.target.value);
+                        if (selected) {
+                          setNewPlan({
+                            ...newPlan,
+                            target: selected.name,
+                            specs: {
+                              ...newPlan.specs,
+                              cores: { ...(newPlan.specs as any).cores, num: selected.cores || 0 },
+                              ram: { ...(newPlan.specs as any).ram, num: selected.ram || 0, unit: 'GB' },
+                              storage: { ...(newPlan.specs as any).storage, num: selected.disk || 0, unit: 'GB' },
+                            }
+                          });
+                        }
+                      }}
+                      className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                    >
+                      <option value="">{loadingCatalog ? 'Loading...' : 'Select a product'}</option>
+                      {remoteProducts.map(p => (
+                        <option key={p.name} value={p.name}>{p.name} ({p.cores}C, {p.ram}GB RAM, {p.disk}GB Disk)</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">API Target SKU</label>
@@ -386,6 +449,7 @@ function ProductsNew() {
 
 function ProductsList() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: connectors } = useApi<any[]>('/admin/connectors');
   const [filterProvider, setFilterProvider] = useState('all');
   const { data: products, loading, error, refetch } = useApi<Product[]>('/admin/products');
   const toast = useToast();
@@ -406,6 +470,17 @@ function ProductsList() {
   const openEditModal = (p: Product) => {
     setEditPlan({ id: p.id, ...toFormData(p) });
     setIsModalOpen(true);
+  };
+
+  
+  const syncStock = async (id: string) => {
+    try {
+      await api.post(`/admin/products/${id}/sync`, {});
+      toast.success('Stock synced successfully');
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to sync stock');
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -487,6 +562,9 @@ function ProductsList() {
                     <span className="text-green-500 font-medium">+€{margin.toFixed(2)}</span>
                     <span className="text-[10px] text-muted-foreground">{marginPct}% markup</span>
                   </div>
+                                    <button onClick={() => syncStock(p.id)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Sync Stock">
+                    Sync
+                  </button>
                   <button onClick={() => openEditModal(p)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
                     <Edit2 className="w-3 h-3" />
                   </button>
@@ -523,10 +601,21 @@ function ProductsList() {
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Provider</label>
                   <select value={editPlan.provider} onChange={e => setEditPlan({ ...editPlan, provider: e.target.value })} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground">
-                    <option value="Hetzner Cloud">Hetzner Cloud</option>
-                    <option value="Hetzner Robot">Hetzner Robot</option>
-                    <option value="OVH BareMetal">OVH BareMetal</option>
+                    <option value="hetzner_cloud">Hetzner Cloud</option>
+                    <option value="hetzner_robot">Hetzner Robot</option>
+                    <option value="ovh">OVH BareMetal</option>
+                    <option value="pterodactyl">Pterodactyl</option>
+                    <option value="proxmox">Proxmox VE</option>
                     <option value="Custom">Custom / Manual</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Connector Instance</label>
+                  <select value={editPlan.connectorId} onChange={e => setEditPlan({ ...editPlan, connectorId: e.target.value })} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground">
+                    <option value="">Auto / None</option>
+                    {connectors?.filter(c => c.provider === editPlan.provider || editPlan.provider === 'Custom').map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -595,3 +684,6 @@ export default function ProductsRouter() {
     </Routes>
   );
 }
+
+
+

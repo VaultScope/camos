@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Shield, Users, Plus, Edit2, Camera, Key, ShieldCheck, Mail, CheckCircle2, Trash2 } from 'lucide-react';
+import { Shield, Users, Plus, Edit2, Camera, Key, Mail, CheckCircle2, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -40,7 +40,35 @@ function StaffTabs() {
 }
 
 function StaffAccount() {
-  const { data: profile, loading, error } = useApi<StaffWithRole>('/admin/staff/me');
+  const { data: profile, loading, error, refetch } = useApi<StaffWithRole>('/admin/staff/me');
+  const toast = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ first_name: '', last_name: '', username: '', email: '' });
+  const [saving, setSaving] = useState(false);
+
+  // Initialize form data when profile loads
+  if (profile && !isEditing && formData.first_name === '' && formData.username === '') {
+    setFormData({
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      username: profile.username,
+      email: profile.email
+    });
+  }
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.put('/admin/staff/me', formData);
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to update profile: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) return <Page title="Identity, Staff & RBAC"><StaffTabs /><div className="p-8 text-center text-muted-foreground text-sm">Loading profile...</div></Page>;
   if (error) return <Page title="Identity, Staff & RBAC"><StaffTabs /><div className="p-8 text-center text-red-500 text-sm">Failed to load profile: {error}</div></Page>;
@@ -89,26 +117,38 @@ function StaffAccount() {
 
           <div className="md:col-span-2 space-y-6">
             <section className="border border-border bg-background p-5">
-              <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Profile Information</h3>
+              <div className="flex justify-between items-center border-b border-border pb-2 mb-4">
+                <h3 className="text-sm font-medium">Profile Information</h3>
+                {!isEditing ? (
+                  <button onClick={() => setIsEditing(true)} className="text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                    <Edit2 className="w-3 h-3" /> Edit
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button onClick={() => { setIsEditing(false); setFormData({ first_name: profile.first_name, last_name: profile.last_name, username: profile.username, email: profile.email }); }} className="text-xs px-2 py-1 border border-border hover:bg-foreground/5">Cancel</button>
+                    <button onClick={handleSave} disabled={saving} className="text-xs px-2 py-1 bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">First Name</label>
-                    <input type="text" defaultValue={profile.first_name} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly />
+                    <input type="text" value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly={!isEditing} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Last Name</label>
-                    <input type="text" defaultValue={profile.last_name} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly />
+                    <input type="text" value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly={!isEditing} />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Username</label>
-                  <input type="text" defaultValue={profile.username} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" readOnly />
+                  <input type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" readOnly={!isEditing} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email</label>
                   <div className="flex gap-2">
-                    <input type="email" defaultValue={profile.email} className="flex-1 border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly />
+                    <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="flex-1 border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" readOnly={!isEditing} />
                     {profile.email_verified ? (
                       <span className="flex items-center gap-1 px-3 border border-green-500/30 text-green-500 text-xs">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Verified
@@ -126,28 +166,11 @@ function StaffAccount() {
             <section className="border border-border bg-background p-5">
               <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Security</h3>
               <div className="space-y-5">
-                <div className="flex items-center justify-between p-4 border border-border bg-foreground/[0.02]">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className={`w-5 h-5 ${profile.mfa_enabled ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    <div>
-                      <div className="text-sm font-medium">Multi-Factor Authentication</div>
-                      <div className="text-xs text-muted-foreground">
-                        {profile.mfa_enabled ? 'Enabled via Authentik' : 'Not configured'}
-                      </div>
-                    </div>
-                  </div>
-                  {profile.mfa_enabled ? (
-                    <span className="text-xs px-2.5 py-1 border border-green-500/30 text-green-500">Active</span>
-                  ) : (
-                    <span className="text-xs px-2.5 py-1 border border-yellow-500/30 text-yellow-500">Inactive</span>
-                  )}
-                </div>
-
                 <div className="p-4 border border-border bg-foreground/[0.02]">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium">Assigned Role</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Managed via CAMOS RBAC — contact a Super Admin to change.</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Managed via CAMOS RBAC — contact a Owner to change.</div>
                     </div>
                     <span className="px-2.5 py-1 border border-border text-xs font-medium">{profile.role_name}</span>
                   </div>
@@ -173,7 +196,14 @@ function StaffAccount() {
 
 function StaffMembers() {
   const [searchStaff, setSearchStaff] = useState('');
-  const { data: staffList, loading, error } = useApi<StaffWithRole[]>('/admin/staff');
+  const { data: staffList, loading, error, refetch } = useApi<StaffWithRole[]>('/admin/staff');
+  const { data: roles } = useApi<Role[]>('/admin/staff/roles');
+  const toast = useToast();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [editStaff, setEditStaff] = useState({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: '' });
+  const [saving, setSaving] = useState(false);
 
   const items = staffList || [];
   const filtered = items.filter(s =>
@@ -182,6 +212,71 @@ function StaffMembers() {
     s.email.toLowerCase().includes(searchStaff.toLowerCase()) ||
     s.role_name.toLowerCase().includes(searchStaff.toLowerCase())
   );
+
+  const openCreateModal = () => {
+    setEditStaff({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: roles?.[0]?.id || '' });
+    setModalMode('create');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (s: StaffWithRole) => {
+    setEditStaff({ id: s.id, first_name: s.first_name, last_name: s.last_name, username: s.username, email: s.email, role_id: s.role_id || roles?.[0]?.id || '' });
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!editStaff.username.trim() || !editStaff.email.trim() || saving) return;
+    setSaving(true);
+    try {
+      if (modalMode === 'create') {
+        await api.post('/admin/staff', editStaff);
+      } else {
+        await api.put(`/admin/staff/${editStaff.id}`, editStaff);
+      }
+      setIsModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to save staff: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || modalMode !== 'edit') return;
+    const formData = new FormData();
+    formData.append('avatar', file);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/staff/${editStaff.id}/avatar`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('vs_admin_token')}`
+        }
+      });
+      if (!res.ok) throw new Error('Failed to upload');
+      toast.success('Avatar uploaded successfully');
+      refetch();
+    } catch (err) {
+      toast.error('Avatar upload failed');
+    }
+  };
+
+  const handleDelete = async (id: string, name: string, isFirst: boolean) => {
+    if (isFirst) {
+      toast.error("Cannot delete the root user.");
+      return;
+    }
+    if (!confirm(`Delete user "${name}"?`)) return;
+    try {
+      await api.delete(`/admin/staff/${id}`);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to delete user: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   return (
     <Page title="Identity, Staff & RBAC">
@@ -196,6 +291,9 @@ function StaffMembers() {
             className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
           />
         </div>
+        <button onClick={openCreateModal} className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors cursor-pointer whitespace-nowrap">
+          <Plus className="w-4 h-4" /> Add User
+        </button>
       </div>
 
       {loading && <div className="p-8 text-center text-muted-foreground text-sm">Loading staff...</div>}
@@ -203,29 +301,104 @@ function StaffMembers() {
 
       {!loading && !error && (
         <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-4 text-muted-foreground">
+          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
             <div className="col-span-2">Staff Member (OIDC)</div>
             <div>Assigned Role</div>
             <div className="text-right">Last Login</div>
+            <div className="text-right">Actions</div>
           </div>
-          {filtered.map(s => (
-            <div key={s.id} className="p-4 text-sm grid grid-cols-4 items-center hover:bg-foreground/[0.02]">
-              <div className="col-span-2 flex items-center gap-3">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <div className="flex flex-col">
-                  <span className="font-medium">{s.first_name} {s.last_name}</span>
-                  <span className="text-xs text-muted-foreground">{s.email}</span>
+          {filtered.map((s, index) => {
+            const isRoot = index === 0 && !searchStaff;
+            const disableDelete = isRoot || items[0]?.id === s.id;
+            return (
+              <div key={s.id} className="p-4 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.02]">
+                <div className="col-span-2 flex items-center gap-3">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{s.first_name} {s.last_name}</span>
+                    <span className="text-xs text-muted-foreground">{s.email}</span>
+                  </div>
+                </div>
+                <div><span className="px-2 py-1 border border-border text-xs">{s.role_name}</span></div>
+                <div className="text-right text-muted-foreground text-xs">{s.last_login?.split('T')[0] || 'Never'}</div>
+                <div className="text-right flex justify-end gap-2">
+                  <button onClick={() => openEditModal(s)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(s.id, s.username, disableDelete)} className={`text-xs border p-1.5 transition-colors ${disableDelete ? 'opacity-50 cursor-not-allowed border-border text-muted-foreground' : 'border-red-500/30 text-red-500 hover:bg-red-500/5 cursor-pointer'}`} title="Delete" disabled={disableDelete}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div><span className="px-2 py-1 border border-border text-xs">{s.role_name}</span></div>
-              <div className="text-right text-muted-foreground text-xs">{s.last_login?.split('T')[0] || 'Never'}</div>
-            </div>
-          ))}
+            );
+          })}
           {filtered.length === 0 && (
             <div className="p-8 text-center text-muted-foreground text-sm">
               {items.length === 0 ? 'No staff members registered.' : 'No staff match your filters.'}
             </div>
           )}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-background border border-border shadow-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-medium flex items-center gap-2">
+                <Users className="w-5 h-5 text-muted-foreground" /> {modalMode === 'create' ? 'Add User' : 'Edit User'}
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {modalMode === 'edit' && (
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Upload Avatar</label>
+                  <input type="file" accept=".png, .webp, .jpg, .jpeg" onChange={handleAvatarUpload} className="text-sm" />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">First Name</label>
+                  <input type="text" value={editStaff.first_name} onChange={e => setEditStaff({...editStaff, first_name: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Last Name</label>
+                  <input type="text" value={editStaff.last_name} onChange={e => setEditStaff({...editStaff, last_name: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Username</label>
+                <input type="text" value={editStaff.username} onChange={e => setEditStaff({...editStaff, username: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email</label>
+                <input type="email" value={editStaff.email} onChange={e => setEditStaff({...editStaff, email: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Role</label>
+                <select value={editStaff.role_id} onChange={e => setEditStaff({...editStaff, role_id: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground">
+                  <option value="" disabled>Select Role...</option>
+                  {roles?.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8 border-t border-border pt-4">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer border border-transparent">Cancel</button>
+              <button
+                onClick={handleSave}
+                disabled={!editStaff.username || !editStaff.email || saving}
+                className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                {saving ? 'Saving...' : modalMode === 'create' ? 'Add User' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Page>
@@ -249,7 +422,16 @@ function StaffRbac() {
   const [editRole, setEditRole] = useState({ id: '', name: '', mapped_group: '', permissions: [] as string[] });
   const [saving, setSaving] = useState(false);
 
-  const availablePerms = ['*', 'user.view', 'user.create', 'user.update', 'user.delete', 'billing.manage', 'tickets.manage', 'servers.power', 'servers.wipe', 'api.manage'];
+  const permissionGroups = {
+    Root: ['*'],
+    Customers: ['customers.view', 'customers.manage', 'customers.create', 'customers.edit', 'customers.delete'],
+    Billing: ['billing.view', 'billing.manage', 'invoices.view', 'invoices.manage', 'invoices.create', 'invoices.edit', 'invoices.delete', 'tax.manage', 'coupons.manage'],
+    Services: ['services.view', 'services.manage', 'services.power', 'services.reinstall', 'services.suspend', 'services.terminate'],
+    Staff: ['staff.view', 'staff.manage', 'rbac.manage'],
+    Products: ['products.view', 'products.manage', 'products.create', 'products.edit', 'products.delete', 'forms.manage'],
+    Tickets: ['tickets.view', 'tickets.manage', 'tickets.reply', 'departments.manage'],
+    System: ['settings.manage', 'connectors.manage', 'templates.manage']
+  };
 
   const handleTogglePerm = (perm: string) => {
     if (editRole.permissions.includes(perm)) {
@@ -271,9 +453,8 @@ function StaffRbac() {
     setIsRoleModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!editRole.name.trim() || !editRole.mapped_group.trim() || saving) return;
-
+  const handleSaveRole = async () => {
+    if (!editRole.name.trim() || !editRole.mapped_group.trim()) return;
     setSaving(true);
     try {
       const payload = {
@@ -287,23 +468,22 @@ function StaffRbac() {
       } else {
         await api.put(`/admin/staff/roles/${editRole.id}`, payload);
       }
-
       setIsRoleModalOpen(false);
       refetch();
     } catch (err) {
-      toast.error(`Failed to save role: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error('Failed to save role');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete role "${name}"? This action cannot be undone.`)) return;
+  const handleDeleteRole = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this role?')) return;
     try {
       await api.delete(`/admin/staff/roles/${id}`);
       refetch();
     } catch (err) {
-      toast.error(`Failed to delete role: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error('Failed to delete role');
     }
   };
 
@@ -349,7 +529,7 @@ function StaffRbac() {
                 <button onClick={() => openEditModal(r)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button onClick={() => handleDelete(r.id, r.name)} className="text-xs border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/5 transition-colors cursor-pointer" title="Delete">
+                <button onClick={() => handleDeleteRole(r.id)} className="text-xs border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/5 transition-colors cursor-pointer" title="Delete">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -365,7 +545,7 @@ function StaffRbac() {
 
       {isRoleModalOpen && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-background border border-border shadow-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-background border border-border shadow-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-medium flex items-center gap-2">
                 <Shield className="w-5 h-5 text-muted-foreground" /> {modalMode === 'create' ? 'Create Role' : 'Edit Role'}
@@ -388,13 +568,48 @@ function StaffRbac() {
               </div>
 
               <div className="pt-4 border-t border-border">
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-3">Permissions</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {availablePerms.map(perm => (
-                    <label key={perm} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-foreground/[0.02] p-1 border border-transparent hover:border-border">
-                      <input type="checkbox" checked={editRole.permissions.includes(perm)} onChange={() => handleTogglePerm(perm)} className="accent-foreground w-4 h-4" />
-                      <span className="font-mono text-xs">{perm}</span>
-                    </label>
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-xs font-medium text-muted-foreground uppercase">Permissions</label>
+                  <select
+                    className="border border-border bg-transparent text-xs p-1 focus:outline-none focus:border-foreground"
+                    onChange={(e) => {
+                      const template = e.target.value;
+                      let perms: string[] = [];
+                      if (template === 'Support') perms = ['tickets.manage', 'customers.view', 'services.view'];
+                      else if (template === 'Billing') perms = ['billing.manage', 'invoices.manage', 'customers.view'];
+                      else if (template === 'Technical') perms = ['tickets.manage', 'services.manage', 'services.power'];
+                      else if (template === 'Infrastructure Admin') perms = ['services.manage', 'services.power', 'services.reinstall'];
+                      else if (template === 'Account Manager') perms = ['customers.manage', 'staff.manage'];
+                      else if (template === 'Root') perms = ['*'];
+                      
+                      if (template) {
+                        setEditRole({ ...editRole, permissions: perms });
+                      }
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Apply Template...</option>
+                    <option value="Support">Support</option>
+                    <option value="Billing">Billing</option>
+                    <option value="Technical">Technical</option>
+                    <option value="Infrastructure Admin">Infrastructure Admin</option>
+                    <option value="Account Manager">Account Manager</option>
+                    <option value="Root">Root</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {Object.entries(permissionGroups).map(([group, perms]) => (
+                    <div key={group} className="space-y-2">
+                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">{group}</h4>
+                      <div className="space-y-1">
+                        {perms.map(perm => (
+                          <label key={perm} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-foreground/[0.02] p-1 border border-transparent hover:border-border">
+                            <input type="checkbox" checked={editRole.permissions.includes(perm)} onChange={() => handleTogglePerm(perm)} className="accent-foreground w-4 h-4" />
+                            <span className="font-mono text-xs">{perm}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -403,7 +618,7 @@ function StaffRbac() {
             <div className="flex justify-end gap-3 mt-8 border-t border-border pt-4">
               <button onClick={() => setIsRoleModalOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer border border-transparent">Cancel</button>
               <button
-                onClick={handleSave}
+                onClick={handleSaveRole}
                 disabled={!editRole.name || !editRole.mapped_group || saving}
                 className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
@@ -427,3 +642,4 @@ export default function StaffRouter() {
     </Routes>
   );
 }
+

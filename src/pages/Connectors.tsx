@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Cloud, Server, CreditCard, Mail, Globe, Users, Plus, Shield } from 'lucide-react';
+import { Cloud, Server, CreditCard, Globe, Users, Shield } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { Connector } from '../lib/types';
+import { useToast } from '../components/Toast';
 
 interface ProviderDef {
   provider: string;
@@ -92,21 +93,98 @@ function ConnectorsAuth() {
 }
 
 function ConnectorsBilling() {
-  const { data: connectors } = useApi<Connector[]>('/admin/connectors');
-  const stripe = connectors?.find(c => c.provider === 'stripe');
+  const { data: settingsData, refetch } = useApi<any[]>('/admin/settings');
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState({
+    stripe_live_public_key: '',
+    stripe_live_secret_key: '',
+    stripe_sandbox_public_key: '',
+    stripe_sandbox_secret_key: '',
+    stripe_webhook_secret: '',
+    stripe_sandbox_mode: false,
+  });
+
+  useEffect(() => {
+    if (settingsData) {
+      const s: any = { ...settings };
+      settingsData.forEach((row) => {
+        if (row.key in s) {
+          s[row.key] = row.key === 'stripe_sandbox_mode' ? row.value === 'true' : row.value;
+        }
+      });
+      setSettings(s);
+    }
+  }, [settingsData]);
+
+  const update = (key: string, value: any) => setSettings({ ...settings, [key]: value });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = Object.entries(settings).map(([k, v]) => ({ key: k, value: String(v) }));
+      await api.put('/admin/settings', payload);
+      toast.success('Stripe settings saved successfully');
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isConfigured = settings.stripe_live_secret_key || settings.stripe_sandbox_secret_key;
 
   return (
     <Page title="Billing & Payment Gateways">
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="border border-border p-6 bg-background">
-          <CreditCard className="w-8 h-8 mb-4 text-muted-foreground" />
-          <h3 className="font-medium text-lg mb-1">Stripe</h3>
-          <p className="text-sm text-muted-foreground mb-4">Process credit cards, SEPA, and local payment methods.</p>
-          <div className="flex items-center gap-2 text-xs">
-            <div className={`w-2 h-2 rounded-full ${stripe?.status === 'connected' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-            <span className={stripe?.status === 'connected' ? 'text-green-500' : 'text-yellow-500'}>
-              {stripe?.status === 'connected' ? 'Connected' : 'Not Configured'}
-            </span>
+      <div className="border border-border p-6 bg-background">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <CreditCard className="w-8 h-8 mb-4 text-muted-foreground" />
+            <h3 className="font-medium text-lg mb-1">Stripe Configuration</h3>
+            <p className="text-sm text-muted-foreground">Process credit cards, SEPA, and local payment methods via Stripe.</p>
+          </div>
+          <span className={`flex items-center gap-2 text-xs font-medium ${isConfigured ? 'text-green-500' : 'text-yellow-500'}`}>
+            <div className={`w-2 h-2 rounded-full ${isConfigured ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            {isConfigured ? 'Connected' : 'Not Configured'}
+          </span>
+        </div>
+
+        <div className="space-y-4 border-t border-border pt-4">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={settings.stripe_sandbox_mode} onChange={e => update('stripe_sandbox_mode', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer" />
+            Enable Test Mode (Sandbox)
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Live Public Key</label>
+              <input type="text" value={settings.stripe_live_public_key} onChange={e => update('stripe_live_public_key', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="pk_live_..." />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Live Secret Key</label>
+              <input type="password" value={settings.stripe_live_secret_key} onChange={e => update('stripe_live_secret_key', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="sk_live_..." />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Sandbox Public Key</label>
+              <input type="text" value={settings.stripe_sandbox_public_key} onChange={e => update('stripe_sandbox_public_key', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="pk_test_..." />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Sandbox Secret Key</label>
+              <input type="password" value={settings.stripe_sandbox_secret_key} onChange={e => update('stripe_sandbox_secret_key', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="sk_test_..." />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Webhook Secret</label>
+              <input type="password" value={settings.stripe_webhook_secret} onChange={e => update('stripe_webhook_secret', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="whsec_..." />
+            </div>
+          </div>
+          <div className="pt-2">
+            <button onClick={handleSave} disabled={saving} className="text-xs px-4 py-1.5 bg-foreground text-background hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
           </div>
         </div>
       </div>
@@ -118,7 +196,9 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<'success' | 'error' | null>(null);
+  const [name, setName] = useState(connector?.name || def.name);
   const formRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
   const Icon = def.icon;
 
   const status = connector?.status || 'not_configured';
@@ -128,9 +208,9 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
   const getFieldValues = () => {
     const config: Record<string, string> = {};
     if (!formRef.current) return config;
-    const inputs = formRef.current.querySelectorAll('input');
+    const inputs = formRef.current.querySelectorAll('input:not([name="connector_name"])');
     def.fields.forEach((f, i) => {
-      if (inputs[i]) config[f.key] = inputs[i].value;
+      if (inputs[i]) config[f.key] = (inputs[i] as HTMLInputElement).value;
     });
     return config;
   };
@@ -151,14 +231,18 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
   };
 
   const handleSave = async () => {
-    if (!connector) return;
     setSaving(true);
     try {
-      await api.put(`/admin/connectors/${connector.id}`, { config: getFieldValues() });
+      if (connector) {
+        await api.put(`/admin/connectors/${connector.id}`, { config: getFieldValues() });
+      } else {
+        await api.post('/admin/connectors', { name, provider: def.provider, config: getFieldValues() });
+      }
       setResult('success');
       onSaved();
-    } catch {
+    } catch (e: any) {
       setResult('error');
+      toast.error(e.message);
     } finally {
       setSaving(false);
       setTimeout(() => setResult(null), 3000);
@@ -171,7 +255,7 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
         <div className="flex items-center gap-3">
           <Icon className="w-6 h-6 text-muted-foreground" />
           <div>
-            <h3 className="font-medium">{def.name}</h3>
+            <h3 className="font-medium">{connector ? connector.name : def.name}</h3>
             <p className="text-xs text-muted-foreground">{def.description}</p>
           </div>
         </div>
@@ -182,15 +266,38 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
       </div>
 
       <div ref={formRef} className="space-y-3 border-t border-border pt-4">
+        {!connector && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Instance Name</label>
+            <input
+              type="text"
+              name="connector_name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Hetzner Cloud - Frankfurt"
+              className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+            />
+          </div>
+        )}
         {def.fields.map(f => (
           <div key={f.key}>
-            <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">{f.label}</label>
+            <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+              {f.label}
+              {connector && (
+                <span className="ml-2 text-green-500 font-normal">✓ Configured</span>
+              )}
+            </label>
             <input
               type={f.type || 'password'}
               defaultValue=""
-              placeholder={f.placeholder}
+              placeholder={connector ? "Leave blank to keep existing value" : f.placeholder}
               className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
             />
+            {connector && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Only fill this field if you want to change the {f.label.toLowerCase()}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -209,22 +316,24 @@ function ApiConnectorPanel({ def, connector, onSaved }: { def: ProviderDef; conn
         </div>
         <button
           onClick={handleSave}
-          disabled={saving || !connector}
+          disabled={saving}
           className="text-xs px-4 py-1.5 bg-foreground text-background hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
-
-      {!connector && (
-        <p className="mt-3 text-xs text-muted-foreground">This connector has not been registered in the database yet. Create it via the API or seed the database.</p>
-      )}
     </div>
   );
 }
 
 function ConnectorsApis() {
   const { data: connectors, loading, error, refetch } = useApi<Connector[]>('/admin/connectors');
+  const [addingProvider, setAddingProvider] = useState<string>('');
+
+  const handleAdded = () => {
+    setAddingProvider('');
+    refetch();
+  };
 
   return (
     <Page title="Infrastructure APIs">
@@ -235,62 +344,41 @@ function ConnectorsApis() {
 
       {!loading && !error && (
         <div className="space-y-6">
-          {PROVIDER_DEFS.map(def => (
-            <ApiConnectorPanel
-              key={def.provider}
-              def={def}
-              connector={connectors?.find(c => c.provider === def.provider)}
-              onSaved={refetch}
-            />
-          ))}
+          {connectors?.map(connector => {
+            const def = PROVIDER_DEFS.find(d => d.provider === connector.provider);
+            if (!def) return null;
+            return <ApiConnectorPanel key={connector.id} def={def} connector={connector} onSaved={refetch} />
+          })}
+
+          <div className="mt-8 border-t border-border pt-6">
+            <h3 className="font-medium text-lg mb-4">Add New Connector</h3>
+            <div className="flex gap-4 mb-6">
+              <select 
+                value={addingProvider}
+                onChange={e => setAddingProvider(e.target.value)}
+                className="border border-border bg-background p-2 text-sm focus:outline-none focus:border-foreground"
+              >
+                <option value="">Select a provider...</option>
+                {PROVIDER_DEFS.map(def => (
+                  <option key={def.provider} value={def.provider}>{def.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {addingProvider && (
+              <ApiConnectorPanel 
+                def={PROVIDER_DEFS.find(d => d.provider === addingProvider)!} 
+                onSaved={handleAdded} 
+              />
+            )}
+          </div>
         </div>
       )}
     </Page>
   );
 }
 
-function ConnectorsMail() {
-  const { data: connectors } = useApi<Connector[]>('/admin/connectors');
-  const mailcow = connectors?.find(c => c.provider === 'mailcow');
-
-  return (
-    <Page title="Mailcow Integration">
-      <div className="border border-border p-6 bg-background">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <Mail className="w-8 h-8 mb-4 text-muted-foreground" />
-            <h3 className="font-medium text-lg mb-1">Mailcow (Core Setup)</h3>
-            <p className="text-sm text-muted-foreground">Transactional emails and ticket-pipe integration.</p>
-          </div>
-          <span className={`flex items-center gap-2 text-xs font-medium ${mailcow?.status === 'connected' ? 'text-green-500' : 'text-yellow-500'}`}>
-            <div className={`w-2 h-2 rounded-full ${mailcow?.status === 'connected' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-            {mailcow?.status === 'connected' ? 'Connected' : 'Not Configured'}
-          </span>
-        </div>
-        <div className="border-t border-border pt-4 text-sm text-muted-foreground">
-          Mailcow connector configuration will be available once the connector is registered in the database.
-        </div>
-      </div>
-    </Page>
-  );
-}
-
-function ConnectorsMailboxes() {
-  return (
-    <Page title="Mailcow Mailboxes">
-      <div className="flex justify-between items-center mb-6">
-        <p className="text-sm text-muted-foreground">Map IMAP mailboxes to VaultScope support departments.</p>
-        <button className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors cursor-pointer">
-          <Plus className="w-4 h-4" /> Add Mailbox Route
-        </button>
-      </div>
-
-      <div className="border border-border bg-background p-8 text-center text-sm text-muted-foreground">
-        Mailbox routing will be configurable once the mail connector is active and the mailbox API endpoint is implemented.
-      </div>
-    </Page>
-  );
-}
+import Mailboxes from './Mailboxes';
 
 export default function ConnectorsRouter() {
   return (
@@ -299,8 +387,7 @@ export default function ConnectorsRouter() {
       <Route path="authentication" element={<ConnectorsAuth />} />
       <Route path="billing" element={<ConnectorsBilling />} />
       <Route path="apis" element={<ConnectorsApis />} />
-      <Route path="mail" element={<ConnectorsMail />} />
-      <Route path="mail/mailboxes" element={<ConnectorsMailboxes />} />
+      <Route path="mail/*" element={<Mailboxes />} />
     </Routes>
   );
 }

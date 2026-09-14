@@ -184,10 +184,11 @@ function TicketsList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: tickets, loading, error } = useApi<Ticket[]>('/admin/tickets');
+  const { data: departments } = useApi<Department[]>('/admin/departments');
 
   const items = tickets || [];
   const filtered = items.filter(t => {
-    const matchesTab = activeTab === 'all' || t.category === activeTab;
+    const matchesTab = activeTab === 'all' || t.mailbox === activeTab;
     const matchesSearch =
       t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.ticket_number.toLowerCase().includes(searchQuery.toLowerCase());
@@ -195,11 +196,15 @@ function TicketsList() {
     return matchesTab && matchesSearch && matchesStatus;
   });
 
+  const departmentTabs = (departments || []).map(d => ({
+    key: d.mailbox,
+    label: d.name,
+    count: items.filter(t => t.mailbox === d.mailbox).length
+  }));
+
   const tabs = [
     { key: 'all', label: 'All', count: items.length },
-    { key: 'support', label: 'Support', count: items.filter(t => t.category === 'support').length },
-    { key: 'abuse', label: 'Abuse', count: items.filter(t => t.category === 'abuse').length },
-    { key: 'dmca', label: 'DMCA', count: items.filter(t => t.category === 'dmca').length },
+    ...departmentTabs
   ];
 
   return (
@@ -424,8 +429,11 @@ function TicketsNew() {
   const navigate = useNavigate();
   const { data: customers } = useApi<Customer[]>('/admin/customers');
   const { data: staff } = useApi<Staff[]>('/admin/staff');
+  const { data: departments } = useApi<Department[]>('/admin/departments');
   const toast = useToast();
   const [creating, setCreating] = useState(false);
+  const [departmentId, setDepartmentId] = useState('');
+  const [firstMessage, setFirstMessage] = useState('');
 
   const [form, setForm] = useState({
     customer_id: '',
@@ -437,6 +445,18 @@ function TicketsNew() {
     related_service_id: '',
     ip: '',
   });
+
+  const handleDepartmentChange = (deptId: string) => {
+    setDepartmentId(deptId);
+    const dept = departments?.find(d => d.id === deptId);
+    if (dept) {
+      setForm(f => ({
+        ...f,
+        mailbox: dept.mailbox,
+        assignee_id: dept.default_assignee_id || f.assignee_id,
+      }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -455,6 +475,17 @@ function TicketsNew() {
         ip: form.ip || undefined,
       };
       const ticket = await api.post<Ticket>('/admin/tickets', payload);
+
+      if (firstMessage.trim()) {
+        const currentUser = await api.get<{staff: Staff, role_name: string}>('/admin/staff/me');
+        await api.post(`/admin/tickets/${ticket.id}/messages`, {
+          author_id: currentUser.staff.id,
+          author_type: 'staff',
+          content: firstMessage.trim(),
+          internal: false,
+        });
+      }
+
       navigate(`/tickets/${ticket.id}`);
     } catch (err) {
       toast.error(`Failed to create ticket: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -480,6 +511,20 @@ function TicketsNew() {
             <option value="">Select customer...</option>
             {(customers || []).map(c => (
               <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Department</label>
+          <select
+            value={departmentId}
+            onChange={e => handleDepartmentChange(e.target.value)}
+            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          >
+            <option value="">Select department...</option>
+            {(departments || []).map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
         </div>
@@ -522,6 +567,17 @@ function TicketsNew() {
             required
             className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
             placeholder="Brief description of the issue..."
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium mb-1">First Message</label>
+          <textarea
+            value={firstMessage}
+            onChange={e => setFirstMessage(e.target.value)}
+            rows={4}
+            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            placeholder="Type the first message..."
           />
         </div>
 
