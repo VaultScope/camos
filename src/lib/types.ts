@@ -191,6 +191,23 @@ export interface Staff {
   updated_at: string;
 }
 
+export interface ServiceForm {
+  id: string;
+  name: string;
+  description: string;
+  fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InternalTool {
+  id: string;
+  name: string;
+  url: string;
+  required_permission: string;
+  created_at: string;
+}
+
 export interface Role {
   id: string;
   name: string;
@@ -232,8 +249,20 @@ export interface EmailTemplate {
   body: string;
   enabled: boolean;
   variables: string[];
+  mailbox_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Mailbox {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  user_name: string;
+  password: string;
+  is_default: boolean;
+  created_at: string;
 }
 
 export interface AuthClaims {
@@ -241,6 +270,7 @@ export interface AuthClaims {
   email: string;
   role: string;
   audience: 'admin' | 'storefront';
+  permissions?: string[];
   exp: number;
   iat: number;
 }
