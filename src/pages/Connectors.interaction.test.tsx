@@ -137,7 +137,7 @@ describe('Connectors — Infrastructure APIs', () => {
     const Connectors = (await import('./Connectors')).default;
     render(<MemoryRouter initialEntries={['/apis']}><Connectors /></MemoryRouter>);
     expect(screen.getByText('API Token')).toBeDefined();
-    expect(screen.getByPlaceholderText('hcloud_api_token...')).toBeDefined();
+    expect(screen.getByPlaceholderText(/Leave blank to keep existing value|hcloud_api_token/)).toBeDefined();
   });
 
   it('shows provider description text', async () => {
