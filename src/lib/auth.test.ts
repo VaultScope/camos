@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getStoredClaims, isAuthenticated, getToken, hasPermission, logout, handleCallback } from './auth';
+import { getStoredClaims, isAuthenticated, getToken, hasPermission, logout, loginWithCredentials } from './auth';
 import type { AuthClaims } from './types';
 
 const validClaims: AuthClaims = {
@@ -109,32 +109,28 @@ describe('logout', () => {
   });
 });
 
-describe('handleCallback', () => {
-  it('throws on state mismatch', async () => {
-    sessionStorage.setItem('oidc_state', 'correct-state');
-    await expect(handleCallback('code', 'wrong-state')).rejects.toThrow('Invalid state parameter');
-  });
-
+describe('loginWithCredentials', () => {
   it('stores tokens on success', async () => {
-    sessionStorage.setItem('oidc_state', 'valid-state');
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ token: 'admin-jwt', claims: validClaims }),
     });
 
-    const result = await handleCallback('code123', 'valid-state');
+    const result = await loginWithCredentials('test@example.com', 'password');
     expect(result).toEqual(validClaims);
     expect(localStorage.getItem('vs_admin_token')).toBe('admin-jwt');
     expect(JSON.parse(localStorage.getItem('vs_admin_claims')!)).toEqual(validClaims);
+    expect(global.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+      body: JSON.stringify({ email: 'test@example.com', password: 'password', audience: 'admin' }),
+    }));
   });
 
   it('throws on API failure', async () => {
-    sessionStorage.setItem('oidc_state', 'valid-state');
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ error: 'Invalid authorization code' }),
+      json: () => Promise.resolve({ error: 'Login failed' }),
     });
 
-    await expect(handleCallback('bad-code', 'valid-state')).rejects.toThrow('Invalid authorization code');
+    await expect(loginWithCredentials('bad@example.com', 'badpass')).rejects.toThrow('Login failed');
   });
 });

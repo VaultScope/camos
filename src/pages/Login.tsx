@@ -1,11 +1,13 @@
 import { Users, Shield, Headphones, CreditCard, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated, redirectToLogin, devLogin } from '../lib/auth';
+import { isAuthenticated, loginWithCredentials, devLogin } from '../lib/auth';
 
 export default function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -13,12 +15,14 @@ export default function Login() {
     }
   }, [navigate]);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setError(null);
-      await redirectToLogin();
+      await loginWithCredentials(email, password);
+      navigate('/', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize login');
+      setError(err instanceof Error ? err.message : 'Login failed');
     }
   };
 
@@ -36,8 +40,9 @@ export default function Login() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full border border-border bg-foreground/[0.02] p-8 text-center flex flex-col items-center">
         <img src="/camos.png" alt="CAMOS Logo" className="w-32 h-32 object-contain mb-6" />
+        <h1 className="text-xl font-medium mb-2 text-foreground">Admin Login</h1>
         <p className="text-sm text-muted-foreground mb-8">
-          Restricted Access. Authentication is strictly managed via Authentik SSO. Local passwords are disabled.
+          Enter your credentials to access the admin portal.
         </p>
 
         {error && (
@@ -46,17 +51,35 @@ export default function Login() {
           </div>
         )}
 
-        <button
-          onClick={handleLogin}
-          className="w-full flex items-center justify-center gap-3 border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
-        >
-          <Users className="w-5 h-5" />
-          Login with Authentik (Staff)
-        </button>
+        <form onSubmit={handleLogin} className="w-full flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
+          />
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
+          >
+            <Users className="w-5 h-5" />
+            Sign in
+          </button>
+        </form>
 
         <div className="w-full mt-6 pt-6 border-t border-border">
           <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 text-left font-medium">
-            Quick Dev Login (Bypass Authentik)
+            Quick Dev Login
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -88,10 +111,6 @@ export default function Login() {
               Tech (tech1)
             </button>
           </div>
-        </div>
-
-        <div className="mt-8 pt-8 border-t border-border w-full text-xs text-muted-foreground">
-          auth.vaultscope.de
         </div>
       </div>
     </div>

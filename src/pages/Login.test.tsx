@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import Login from './Login';
@@ -11,44 +11,50 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../lib/auth', () => ({
   isAuthenticated: vi.fn(() => false),
-  redirectToLogin: vi.fn(),
+  loginWithCredentials: vi.fn(),
+  devLogin: vi.fn(),
 }));
 
-import { isAuthenticated, redirectToLogin } from '../lib/auth';
+import { isAuthenticated, loginWithCredentials } from '../lib/auth';
 const mockIsAuth = vi.mocked(isAuthenticated);
-const mockRedirect = vi.mocked(redirectToLogin);
+const mockLogin = vi.mocked(loginWithCredentials);
 
 describe('Login', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockIsAuth.mockReturnValue(false);
-    mockRedirect.mockReset();
+    mockLogin.mockReset();
   });
 
   it('renders login page', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
-    expect(screen.getByText(/Restricted Access/)).toBeDefined();
+    expect(screen.getByText('Admin Login')).toBeDefined();
+    expect(screen.getByPlaceholderText('Email address')).toBeDefined();
+    expect(screen.getByPlaceholderText('Password')).toBeDefined();
   });
 
   it('renders login button', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
-    expect(screen.getByText('Login with Authentik (Staff)')).toBeDefined();
+    expect(screen.getByRole('button', { name: /Sign in/i })).toBeDefined();
   });
 
-  it('calls redirectToLogin when button clicked', () => {
+  it('calls loginWithCredentials when form submitted', async () => {
+    mockLogin.mockResolvedValue({} as any);
     render(<MemoryRouter><Login /></MemoryRouter>);
-    fireEvent.click(screen.getByText('Login with Authentik (Staff)'));
-    expect(mockRedirect).toHaveBeenCalled();
+    
+    fireEvent.change(screen.getByPlaceholderText('Email address'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    });
   });
 
   it('redirects to / if already authenticated', () => {
     mockIsAuth.mockReturnValue(true);
     render(<MemoryRouter><Login /></MemoryRouter>);
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
-  });
-
-  it('renders auth domain footer', () => {
-    render(<MemoryRouter><Login /></MemoryRouter>);
-    expect(screen.getByText('auth.vaultscope.de')).toBeDefined();
   });
 });
