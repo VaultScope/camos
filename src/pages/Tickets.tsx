@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { ArrowLeft, Send, Plus } from 'lucide-react';
+import { ArrowLeft, Send, Plus, Server, ExternalLink, Paperclip, X, Image as ImageIcon } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
-import type { Ticket, TicketMessage, Department, Customer, Staff } from '../lib/types';
+import type { Ticket, TicketMessage, Department, Customer, Staff, Service, TicketAttachment } from '../lib/types';
 
 const getStaffDisplayName = (staff: Staff) => {
   if (staff.first_name || staff.last_name) {
@@ -185,6 +185,7 @@ function TicketsList() {
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: tickets, loading, error } = useApi<Ticket[]>('/admin/tickets');
   const { data: departments } = useApi<Department[]>('/admin/departments');
+  const { data: services } = useApi<Service[]>('/admin/services');
 
   const items = tickets || [];
   const filtered = items.filter(t => {
@@ -256,7 +257,7 @@ function TicketsList() {
         <div className="border border-border divide-y divide-border bg-background">
           <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
             <div>Number</div>
-            <div className="col-span-2">Subject</div>
+            <div className="col-span-2">Subject & Service</div>
             <div>Category</div>
             <div>Priority</div>
             <div>Status</div>
@@ -265,7 +266,15 @@ function TicketsList() {
           {filtered.map(t => (
             <Link key={t.id} to={`/tickets/${t.id}`} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02] transition-colors">
               <div className="font-mono text-xs">{t.ticket_number}</div>
-              <div className="col-span-2 font-medium truncate">{t.subject}</div>
+              <div className="col-span-2 flex flex-col pr-2">
+                <span className="font-medium truncate">{t.subject}</span>
+                {t.related_service_id && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-400 mt-0.5">
+                    <Server className="w-3 h-3" />
+                    {services?.find(s => s.id === t.related_service_id)?.name || 'Linked Service'}
+                  </span>
+                )}
+              </div>
               <div>
                 <span className={`text-[10px] px-2 py-0.5 border uppercase ${
                   t.category === 'abuse' ? 'border-red-500/30 text-red-500' :
@@ -313,24 +322,180 @@ function TicketDetail() {
   const { data: ticket, loading, error, refetch } = useApi<Ticket>(`/admin/tickets/${id}`);
   const { data: messages, refetch: refetchMessages } = useApi<TicketMessage[]>(`/admin/tickets/${id}/messages`);
   const { data: staff } = useApi<Staff>('/admin/staff/me');
+  const { data: customerServices } = useApi<Service[]>(ticket?.customer_id ? `/admin/services?customer_id=${ticket.customer_id}` : null);
   const toast = useToast();
   const [replyText, setReplyText] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [sending, setSending] = useState(false);
+  const [liveMessages, setLiveMessages] = useState<TicketMessage[]>([]);
+  const [isLive, setIsLive] = useState(false);
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const refetchRef = useRef(refetch);
+  const refetchMessagesRef = useRef(refetchMessages);
+
+  useEffect(() => {
+    refetchRef.current = refetch;
+    refetchMessagesRef.current = refetchMessages;
+  }, [refetch, refetchMessages]);
+
+  // Synchronize initial messages from API
+  useEffect(() => {
+    if (messages) {
+      setLiveMessages(prev => {
+        if (prev.length === messages.length && prev.every((m, idx) => m.id === messages[idx]?.id)) {
+          return prev;
+        }
+        return messages;
+      });
+    }
+  }, [messages]);
+
+  // Connect to SSE for real-time ticket replies
+  useEffect(() => {
+    if (!id || typeof window === 'undefined' || typeof window.EventSource === 'undefined') return;
+
+    const token = localStorage.getItem('vs_admin_token') || '';
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const eventSourceUrl = `${apiBase}/admin/tickets/${id}/events${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    let es: EventSource | null = null;
+
+    try {
+      es = new window.EventSource(eventSourceUrl, { withCredentials: true });
+
+      es.onopen = () => {
+        setIsLive(true);
+      };
+
+      es.addEventListener('message', (event) => {
+        try {
+          const newMsg: TicketMessage = JSON.parse(event.data);
+          setLiveMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+          refetchRef.current();
+        } catch (err) {
+          console.error('Failed to parse admin SSE message:', err);
+          refetchMessagesRef.current();
+        }
+      });
+
+      es.onerror = () => {
+        setIsLive(false);
+      };
+    } catch (e) {
+      console.warn('Failed to initialize Admin EventSource:', e);
+    }
+
+    // Polling fallback every 3s to guarantee seamless live updates across all network conditions
+    const pollInterval = setInterval(() => {
+      refetchMessagesRef.current();
+    }, 3000);
+
+    return () => {
+      es?.close();
+      clearInterval(pollInterval);
+    };
+  }, [id]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !id) return;
+    setUploadError(null);
+
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // 1. Image validation
+      if (!file.type.startsWith('image/')) {
+        setUploadError(`"${file.name}" is not an image. Only PNG, JPEG, WebP, and GIF images are permitted.`);
+        continue;
+      }
+      // 2. 10MB size limit
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError(`"${file.name}" exceeds the 10MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const token = localStorage.getItem('vs_admin_token') || '';
+
+      for (const file of validFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const csrfRes = await fetch(`${apiBase}/csrf`, { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+        const csrfToken = csrfRes?.token || '';
+
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (csrfToken) headers['x-csrf-token'] = csrfToken;
+
+        const res = await fetch(`${apiBase}/admin/tickets/${id}/attachments`, {
+          method: 'POST',
+          headers,
+          body: formData,
+          credentials: 'include',
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload failed (${res.status})`);
+        }
+
+        const uploaded: TicketAttachment = await res.json();
+        setAttachments(prev => [...prev, uploaded]);
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload image');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (attachId: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== attachId));
+  };
 
   const handleSendReply = async () => {
-    if (!replyText.trim() || !staff || sending) return;
+    let authorId = staff?.id;
+    if (!authorId) {
+      const stored = localStorage.getItem('vs_admin_claims');
+      if (stored) {
+        try { authorId = JSON.parse(stored).sub; } catch {}
+      }
+    }
+    if ((!replyText.trim() && attachments.length === 0) || !authorId || sending || uploading) return;
     setSending(true);
     try {
-      await api.post(`/admin/tickets/${id}/messages`, {
-        author_id: staff.id,
+      const newMsg = await api.post<TicketMessage>(`/admin/tickets/${id}/messages`, {
+        author_id: authorId,
         author_type: 'staff',
-        content: replyText.trim(),
+        content: replyText.trim() || 'Attached image(s)',
         internal: isInternal,
+        attachments: attachments,
       });
       setReplyText('');
+      setAttachments([]);
       setIsInternal(false);
-      refetchMessages();
+      setLiveMessages(prev => {
+        if (prev.some(m => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
       refetch();
     } catch (err) {
       toast.error(`Failed to send reply: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -352,7 +517,8 @@ function TicketDetail() {
     );
   }
 
-  const thread = messages || [];
+  const thread = liveMessages.length > 0 ? liveMessages : (messages || []);
+  const linkedSvc = customerServices?.find(s => s.id === ticket.related_service_id);
 
   return (
     <Page title="Ticket Detail">
@@ -372,6 +538,11 @@ function TicketDetail() {
                 <span className={`text-[10px] px-2 py-0.5 border uppercase ${ticket.priority === 'critical' ? 'border-red-500/30 text-red-500' : ticket.priority === 'high' ? 'border-orange-500/30 text-orange-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
                   {ticket.priority}
                 </span>
+                {isLive && (
+                  <span className="text-green-500 flex items-center gap-1.5 font-mono text-[10px] border border-green-500/30 px-2 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+                  </span>
+                )}
               </div>
               <div className="text-xs text-muted-foreground space-x-3">
                 <span>#{ticket.ticket_number}</span>
@@ -382,7 +553,109 @@ function TicketDetail() {
               </div>
             </div>
           </div>
+
+          {/* Quick Management Controls */}
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <span>Status:</span>
+              <select
+                value={ticket.status}
+                onChange={async (e) => {
+                  await api.put(`/admin/tickets/${ticket.id}`, { status: e.target.value });
+                  toast.success('Status updated');
+                  refetch();
+                }}
+                className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground"
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="waiting_customer">Waiting Customer</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <span>Priority:</span>
+              <select
+                value={ticket.priority}
+                onChange={async (e) => {
+                  await api.put(`/admin/tickets/${ticket.id}`, { priority: e.target.value });
+                  toast.success('Priority updated');
+                  refetch();
+                }}
+                className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground"
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+
+            {customerServices && customerServices.length > 0 && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <span>Linked Service:</span>
+                <select
+                  value={ticket.related_service_id || ''}
+                  onChange={async (e) => {
+                    const val = e.target.value || null;
+                    await api.put(`/admin/tickets/${ticket.id}`, { related_service_id: val });
+                    toast.success('Linked service updated');
+                    refetch();
+                  }}
+                  className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground max-w-xs"
+                >
+                  <option value="">None / Unlinked</option>
+                  {customerServices.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.hostname || s.ip || s.id.slice(0, 8)})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Linked Service Banner */}
+        {ticket.related_service_id && (
+          <div className="p-4 bg-foreground/[0.02] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 border border-border bg-background">
+                <Server className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Linked Customer Service</div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <span>{linkedSvc?.name || 'Service #' + ticket.related_service_id.slice(0, 8)}</span>
+                  {linkedSvc && (
+                    <>
+                      <span className="text-xs font-mono text-muted-foreground">({linkedSvc.hostname || linkedSvc.ip || linkedSvc.provider_resource_id})</span>
+                      <span className="text-[10px] px-1.5 py-0.5 border border-border uppercase font-mono text-green-500">{linkedSvc.status}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/services/${ticket.related_service_id}`}
+                className="px-3 py-1.5 border border-border text-xs hover:bg-foreground/5 inline-flex items-center gap-1"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> View Service
+              </Link>
+              <button
+                onClick={async () => {
+                  await api.put(`/admin/tickets/${ticket.id}`, { related_service_id: null });
+                  toast.success('Service unlinked');
+                  refetch();
+                }}
+                className="px-2 py-1.5 border border-border text-xs text-muted-foreground hover:text-red-500 cursor-pointer"
+                title="Unlink service"
+              >
+                Unlink
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="p-6 space-y-4">
           {thread.length === 0 && (
@@ -396,16 +669,98 @@ function TicketDetail() {
                 <span className="text-xs text-muted-foreground ml-auto">{msg.created_at.replace('T', ' ').slice(0, 16)}</span>
               </div>
               <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+
+              {/* Inline Attachments */}
+              {msg.attachments && msg.attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2.5">
+                  {msg.attachments.map(att => (
+                    <a
+                      key={att.id}
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative block overflow-hidden border border-border bg-foreground/[0.03] rounded hover:border-foreground/40 transition-colors"
+                      title={`${att.filename} (${(att.size / 1024).toFixed(0)} KB)`}
+                    >
+                      <img
+                        src={att.url}
+                        alt={att.filename}
+                        className="h-28 w-28 object-cover rounded transition-transform group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-xs px-1.5 py-0.5 text-[10px] truncate text-muted-foreground group-hover:text-foreground">
+                        {att.filename}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          {uploadError && (
+            <div className="mb-3 text-xs text-red-500 bg-red-500/10 border border-red-500/20 p-2.5 rounded flex items-center justify-between">
+              <span>{uploadError}</span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                className="text-red-500 hover:text-red-400 text-xs ml-2 font-mono"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {attachments.map(att => (
+                <div
+                  key={att.id}
+                  className="flex items-center gap-2 border border-border bg-foreground/[0.03] px-2.5 py-1 text-xs rounded"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="max-w-[150px] truncate">{att.filename}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    ({(att.size / 1024).toFixed(0)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(att.id)}
+                    className="text-muted-foreground hover:text-red-500 ml-1 p-0.5"
+                    title="Remove attachment"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mb-2">
             <label className="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="checkbox" checked={isInternal} onChange={e => setIsInternal(e.target.checked)} className="accent-foreground" />
               Internal Note
             </label>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-50"
+            >
+              <Paperclip className="w-3.5 h-3.5" />
+              {uploading ? 'Uploading...' : 'Attach Image (Max 10MB)'}
+            </button>
           </div>
           <div className="flex gap-2">
             <textarea
@@ -415,7 +770,11 @@ function TicketDetail() {
               className="flex-1 border border-border bg-transparent p-3 text-sm focus:outline-none focus:border-foreground resize-none"
               placeholder={isInternal ? 'Add internal note (not visible to customer)...' : 'Type your reply...'}
             />
-            <button onClick={handleSendReply} disabled={!replyText.trim() || sending} className="px-4 self-end border border-border bg-foreground text-background text-sm py-2 hover:bg-foreground/90 disabled:opacity-50 cursor-pointer">
+            <button
+              onClick={handleSendReply}
+              disabled={(!replyText.trim() && attachments.length === 0) || sending || uploading}
+              className="px-4 self-end border border-border bg-foreground text-background text-sm py-2 hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+            >
               {sending ? '...' : <Send className="w-4 h-4" />}
             </button>
           </div>
@@ -430,11 +789,6 @@ function TicketsNew() {
   const { data: customers } = useApi<Customer[]>('/admin/customers');
   const { data: staff } = useApi<Staff[]>('/admin/staff');
   const { data: departments } = useApi<Department[]>('/admin/departments');
-  const toast = useToast();
-  const [creating, setCreating] = useState(false);
-  const [departmentId, setDepartmentId] = useState('');
-  const [firstMessage, setFirstMessage] = useState('');
-
   const [form, setForm] = useState({
     customer_id: '',
     category: 'support' as 'support' | 'abuse' | 'dmca',
@@ -445,6 +799,11 @@ function TicketsNew() {
     related_service_id: '',
     ip: '',
   });
+  const { data: customerServices } = useApi<Service[]>(form.customer_id ? `/admin/services?customer_id=${form.customer_id}` : null);
+  const toast = useToast();
+  const [creating, setCreating] = useState(false);
+  const [departmentId, setDepartmentId] = useState('');
+  const [firstMessage, setFirstMessage] = useState('');
 
   const handleDepartmentChange = (deptId: string) => {
     setDepartmentId(deptId);
@@ -511,6 +870,20 @@ function TicketsNew() {
             <option value="">Select customer...</option>
             {(customers || []).map(c => (
               <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Related Service (Optional)</label>
+          <select
+            value={form.related_service_id}
+            onChange={e => setForm({...form, related_service_id: e.target.value})}
+            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          >
+            <option value="">None / General Inquiry</option>
+            {(customerServices || []).map(s => (
+              <option key={s.id} value={s.id}>{s.name} ({s.hostname || s.ip || s.id.slice(0, 8)})</option>
             ))}
           </select>
         </div>

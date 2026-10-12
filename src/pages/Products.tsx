@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Plus, X, Server, Edit2, EyeOff, BarChart2, TrendingUp, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { useToast } from '../components/Toast';
+import { HelpTooltip } from '../components/HelpTooltip';
 import type { Product } from '../lib/types';
 
 interface ProductFormData {
@@ -21,7 +22,6 @@ interface ProductFormData {
   billingCycle: string;
   setupFee: number;
   serviceFormId: string;
-  connectorId: string;
 }
 
 function toFormData(p: Product): ProductFormData {
@@ -39,7 +39,6 @@ function toFormData(p: Product): ProductFormData {
     billingCycle: p.billing_cycle === 'one_time' ? 'One-Time' : p.billing_cycle.charAt(0).toUpperCase() + p.billing_cycle.slice(1),
     setupFee: parseFloat(p.setup_fee),
     serviceFormId: p.service_form_id || '',
-    connectorId: (p as any).connector_id || '',
   };
 }
 
@@ -48,7 +47,6 @@ function toApiPayload(p: ProductFormData) {
     name: p.name,
     category: p.category,
     provider: p.provider,
-    connector_id: p.connectorId || null,
     target: p.target,
     specs: p.specs,
     cost: p.cost,
@@ -130,11 +128,8 @@ function ProductsInsights() {
 function ProductsNew() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { data: connectors } = useApi<any[]>('/admin/connectors');
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [remoteProducts, setRemoteProducts] = useState<any[]>([]);
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const [newPlan, setNewPlan] = useState<ProductFormData>({
     name: '', category: 'VPS',
@@ -150,25 +145,8 @@ function ProductsNew() {
     },
     provider: 'Hetzner Cloud', target: '',
     cost: 0, price: 0, stock: -1, userLimit: 0, hidden: false,
-    billingCycle: 'Monthly', setupFee: 0, serviceFormId: '', connectorId: ''
+    billingCycle: 'Monthly', setupFee: 0, serviceFormId: ''
   });
-
-
-
-  useEffect(() => {
-    if (newPlan.connectorId) {
-      setLoadingCatalog(true);
-      api.get<any[]>(`/admin/connectors/${newPlan.connectorId}/catalog`)
-        .then(res => setRemoteProducts(res))
-        .catch(err => {
-          toast.error(err.message || 'Failed to fetch catalog');
-          setRemoteProducts([]);
-        })
-        .finally(() => setLoadingCatalog(false));
-    } else {
-      setRemoteProducts([]);
-    }
-  }, [newPlan.connectorId]);
 
   const steps = ['Basics', 'Hardware', 'Pricing', 'Review'];
   const s = newPlan.specs as any;
@@ -214,22 +192,45 @@ function ProductsNew() {
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">Name your plan and connect it to an upstream provider.</p>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Plan Name</label>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Plan Name</label>
+                  <HelpTooltip
+                    title="Public Product Title"
+                    content="The commercial name displayed on the storefront pricing page, customer invoices, and order receipts."
+                    example="VaultScope VPS Pro, Dedicated EX-44, 100GB SFTP Vault"
+                  />
+                </div>
                 <input type="text" value={newPlan.name} onChange={e => setNewPlan({ ...newPlan, name: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" placeholder="e.g. VaultScope VPS Pro" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Category</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Category</label>
+                    <HelpTooltip
+                      title="Storefront Category"
+                      content="Determines the storefront catalog tab and management dashboard layout for the provisioned service."
+                    />
+                  </div>
                   <select value={newPlan.category} onChange={e => setNewPlan({ ...newPlan, category: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
                     <option value="VPS">VPS</option>
                     <option value="Dedicated Servers">Dedicated Servers</option>
+                    <option value="Storage">Storage / SFTP</option>
                     <option value="One Click Deploy">One Click Deploy</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Provider</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Provider</label>
+                    <HelpTooltip
+                      title="Provisioning Engine"
+                      badge="API Connector"
+                      content="Specifies which upstream provider connector will receive automated provisioning, power control, and cancellation tasks."
+                    />
+                  </div>
                   <select value={newPlan.provider} onChange={e => setNewPlan({ ...newPlan, provider: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
-                    <option value="hetzner_cloud">Hetzner Cloud</option>
+                    <option value="hetzner_cloud">Hetzner Cloud (VPS)</option>
+                    <option value="reliablesite">ReliableSite (Dedicated)</option>
+                    <option value="sftpgo">SFTPGo (Cloud Storage)</option>
                     <option value="hetzner_robot">Hetzner Robot</option>
                     <option value="ovh">OVH BareMetal</option>
                     <option value="pterodactyl">Pterodactyl</option>
@@ -237,46 +238,17 @@ function ProductsNew() {
                     <option value="Custom">Custom / Manual</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Connector Instance</label>
-                  <select value={newPlan.connectorId} onChange={e => setNewPlan({ ...newPlan, connectorId: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
-                    <option value="">Auto / None</option>
-                    {connectors?.filter(c => c.provider === newPlan.provider || newPlan.provider === 'Custom').map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                {newPlan.connectorId && (
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Select Remote Product</label>
-                    <select
-                      onChange={e => {
-                        const selected = remoteProducts.find(p => p.name === e.target.value);
-                        if (selected) {
-                          setNewPlan({
-                            ...newPlan,
-                            target: selected.name,
-                            specs: {
-                              ...newPlan.specs,
-                              cores: { ...(newPlan.specs as any).cores, num: selected.cores || 0 },
-                              ram: { ...(newPlan.specs as any).ram, num: selected.ram || 0, unit: 'GB' },
-                              storage: { ...(newPlan.specs as any).storage, num: selected.disk || 0, unit: 'GB' },
-                            }
-                          });
-                        }
-                      }}
-                      className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
-                    >
-                      <option value="">{loadingCatalog ? 'Loading...' : 'Select a product'}</option>
-                      {remoteProducts.map(p => (
-                        <option key={p.name} value={p.name}>{p.name} ({p.cores}C, {p.ram}GB RAM, {p.disk}GB Disk)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">API Target SKU</label>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">API Target SKU</label>
+                  <HelpTooltip
+                    title="Upstream Server / Plan SKU"
+                    badge="Provider Identifier"
+                    content="The exact plan identifier passed into the provider API. For Hetzner: 'cpx21', 'cx32'. For ReliableSite: server ID or package SKU. For SFTPGo: quota profile."
+                    example="cpx31, cax11, 150gb_vault"
+                  />
+                </div>
                 <input type="text" value={newPlan.target} onChange={e => setNewPlan({ ...newPlan, target: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="e.g. CPX31" />
               </div>
             </div>
@@ -343,14 +315,28 @@ function ProductsNew() {
               <p className="text-sm text-muted-foreground">Set your pricing, margins, and availability.</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Wholesale Cost</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Wholesale Cost</label>
+                    <HelpTooltip
+                      title="Wholesale Provider Cost"
+                      content="The raw cost you incur from the upstream provider (Hetzner, ReliableSite, etc.) per month before markup."
+                    />
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">€</span>
                     <input type="number" step="0.01" value={newPlan.cost || ''} onChange={e => setNewPlan({ ...newPlan, cost: parseFloat(e.target.value) || 0 })} className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground" placeholder="13.40" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Retail Price</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Retail Price</label>
+                    <HelpTooltip
+                      title="Customer Retail Price"
+                      badge="Net Amount"
+                      content="The price charged to retail customers before 19% VAT. Storefront displays this with +19% VAT included for B2C clients."
+                      example="€20.00 net -> €23.80 incl. 19% VAT"
+                    />
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">€</span>
                     <input type="number" step="0.01" value={newPlan.price || ''} onChange={e => setNewPlan({ ...newPlan, price: parseFloat(e.target.value) || 0 })} className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground" placeholder="24.99" />
@@ -358,14 +344,26 @@ function ProductsNew() {
                 </div>
               </div>
               {newPlan.cost > 0 && newPlan.price > 0 && (
-                <div className="bg-foreground/5 border border-border p-3 text-sm">
-                  Margin: <span className="text-green-500 font-medium">€{(newPlan.price - newPlan.cost).toFixed(2)}</span>
-                  <span className="text-muted-foreground ml-2">({Math.round(((newPlan.price - newPlan.cost) / newPlan.cost) * 100)}% markup)</span>
+                <div className="bg-foreground/5 border border-border p-3 text-sm flex items-center justify-between">
+                  <div>
+                    Margin: <span className="text-green-500 font-medium">€{(newPlan.price - newPlan.cost).toFixed(2)}</span>
+                    <span className="text-muted-foreground ml-2">({Math.round(((newPlan.price - newPlan.cost) / newPlan.cost) * 100)}% markup)</span>
+                  </div>
+                  <HelpTooltip
+                    title="Profit Margin & Markup"
+                    content="Gross monthly profit earned per active service instance after deducting raw cloud provider costs."
+                  />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Billing Cycle</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Billing Cycle</label>
+                    <HelpTooltip
+                      title="Recurring Subscription Period"
+                      content="Defines how often the billing engine generates renewal invoices: Monthly (every 30 days), Yearly (every 365 days), or One-Time."
+                    />
+                  </div>
                   <select value={newPlan.billingCycle} onChange={e => setNewPlan({ ...newPlan, billingCycle: e.target.value })} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
                     <option value="Monthly">Monthly</option>
                     <option value="Yearly">Yearly</option>
@@ -373,7 +371,13 @@ function ProductsNew() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Setup Fee</label>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Setup Fee</label>
+                    <HelpTooltip
+                      title="One-Time Provisioning Fee"
+                      content="Non-recurring installation charge billed strictly on the initial invoice."
+                    />
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">€</span>
                     <input type="number" step="0.01" value={newPlan.setupFee || ''} onChange={e => setNewPlan({ ...newPlan, setupFee: parseFloat(e.target.value) || 0 })} className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground" placeholder="0.00" />
@@ -449,7 +453,6 @@ function ProductsNew() {
 
 function ProductsList() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: connectors } = useApi<any[]>('/admin/connectors');
   const [filterProvider, setFilterProvider] = useState('all');
   const { data: products, loading, error, refetch } = useApi<Product[]>('/admin/products');
   const toast = useToast();
@@ -607,15 +610,6 @@ function ProductsList() {
                     <option value="pterodactyl">Pterodactyl</option>
                     <option value="proxmox">Proxmox VE</option>
                     <option value="Custom">Custom / Manual</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Connector Instance</label>
-                  <select value={editPlan.connectorId} onChange={e => setEditPlan({ ...editPlan, connectorId: e.target.value })} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground">
-                    <option value="">Auto / None</option>
-                    {connectors?.filter(c => c.provider === editPlan.provider || editPlan.provider === 'Custom').map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
                   </select>
                 </div>
                 <div>

@@ -1,17 +1,48 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { Play, RotateCcw, XCircle } from 'lucide-react';
+import { Play, RotateCcw, XCircle, Search, Filter, ChevronDown, Layers } from 'lucide-react';
 import { useApi } from '../lib/hooks';
+import { api } from '../lib/api';
+import { useToast } from '../components/Toast';
+import { HelpTooltip } from '../components/HelpTooltip';
 import type { Job } from '../lib/types';
 
 export default function JobQueue() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterApi, setFilterApi] = useState('all');
+  const toast = useToast();
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   
-  const { data: jobs } = useApi<Job[]>('/admin/jobs');
+  const { data: jobs, refetch } = useApi<Job[]>('/admin/jobs');
+
+  const handleRetry = async (jobId: string) => {
+    try {
+      await api.post(`/admin/jobs/${jobId}/retry`);
+      toast.success('Job scheduled for immediate retry');
+      refetch();
+      if (selectedJob?.id === jobId) {
+        setSelectedJob(prev => prev ? { ...prev, status: 'queued', error: null } : null);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to retry job');
+    }
+  };
+
+  const handleCancel = async (jobId: string) => {
+    if (!confirm('Are you sure you want to cancel this provisioning job?')) return;
+    try {
+      await api.post(`/admin/jobs/${jobId}/cancel`);
+      toast.success('Job cancelled');
+      refetch();
+      if (selectedJob?.id === jobId) {
+        setSelectedJob(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to cancel job');
+    }
+  };
 
   const filteredJobs = (jobs || []).filter(j => {
     const matchesSearch = 
@@ -33,47 +64,81 @@ export default function JobQueue() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6 bg-foreground/[0.02] border border-border p-3">
-        <div className="flex-1">
+        <div className="flex-1 relative">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input 
             type="text" 
             placeholder="Search by Job ID, Task Description, or Customer..." 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full bg-background border border-border pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-foreground"
           />
         </div>
         <div className="flex gap-3">
-          <select 
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
-          >
-            <option value="all">Any Status</option>
-            <option value="completed">Completed</option>
-            <option value="in_progress">In Progress</option>
-            <option value="failed">Failed</option>
-          </select>
-          <select 
-            value={filterApi}
-            onChange={e => setFilterApi(e.target.value)}
-            className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
-          >
-            <option value="all">Any Target API</option>
-            <option value="hetzner">Hetzner (Cloud/Robot)</option>
-            <option value="ovh">OVH</option>
-            <option value="mailcow">Mailcow</option>
-            <option value="listmonk">Listmonk</option>
-          </select>
+          <div className="relative">
+            <Filter className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select 
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="bg-background border border-border pl-8 pr-8 py-2 text-sm focus:outline-none focus:border-foreground appearance-none cursor-pointer"
+            >
+              <option value="all">Any Status</option>
+              <option value="completed">Completed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="failed">Failed</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <Layers className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select 
+              value={filterApi}
+              onChange={e => setFilterApi(e.target.value)}
+              className="bg-background border border-border pl-8 pr-8 py-2 text-sm focus:outline-none focus:border-foreground appearance-none cursor-pointer"
+            >
+              <option value="all">Any Target API</option>
+              <option value="hetzner">Hetzner (Cloud/Robot)</option>
+              <option value="ovh">OVH</option>
+              <option value="mailcow">Mailcow</option>
+              <option value="listmonk">Listmonk</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
       </div>
 
       <div className="border border-border divide-y divide-border bg-background">
-        <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
-          <div>Job ID</div>
-          <div className="col-span-2">Task Description</div>
-          <div>Target API</div>
+        <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground items-center">
+          <div className="flex items-center gap-1.5">
+            <span>Job ID</span>
+            <HelpTooltip
+              title="Job Identifier"
+              badge="UUID v7"
+              content="Time-ordered unique identifier for this background provisioning operation. Can be correlated directly with VaultScope-API logs."
+            />
+          </div>
+          <div className="col-span-2 flex items-center gap-1.5">
+            <span>Task Description</span>
+            <HelpTooltip
+              title="Provisioning Operation"
+              content="The specific action requested from the upstream provider: 'create' (spin up VM/SFTP), 'delete' (tear down instance), 'power' (reboot/shutdown), or 'modify' (upgrade RAM/quota)."
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span>Target API</span>
+            <HelpTooltip
+              title="Upstream Cloud Provider"
+              content="The infrastructure connector destination: 'hetzner_cloud' (VPS), 'reliablesite' (Dedicated Servers), or 'sftpgo' (Cloud Storage)."
+            />
+          </div>
           <div>Customer</div>
-          <div>Status</div>
+          <div className="flex items-center gap-1.5">
+            <span>Status</span>
+            <HelpTooltip
+              title="Job Lifecycle State"
+              content="'Queued' (waiting for runner), 'In Progress' (dispatched to upstream API), 'Completed' (success), or 'Failed' (exception with retry options)."
+            />
+          </div>
           <div className="text-right">Actions</div>
         </div>
         {filteredJobs.map((j, i) => (
@@ -93,8 +158,8 @@ export default function JobQueue() {
             <div className="text-right flex gap-2 justify-end">
               {j.status === 'failed' && (
                 <>
-                  <button onClick={(e) => e.stopPropagation()} className="p-1.5 border border-border hover:bg-foreground/5 text-muted-foreground cursor-pointer" title="Retry Job"><RotateCcw className="w-4 h-4" /></button>
-                  <button onClick={(e) => e.stopPropagation()} className="p-1.5 border border-border hover:bg-red-500/10 text-red-500 cursor-pointer" title="Cancel Job"><XCircle className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleRetry(j.id); }} className="p-1.5 border border-border hover:bg-foreground/5 text-muted-foreground cursor-pointer" title="Retry Job"><RotateCcw className="w-4 h-4" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); handleCancel(j.id); }} className="p-1.5 border border-border hover:bg-red-500/10 text-red-500 cursor-pointer" title="Cancel Job"><XCircle className="w-4 h-4" /></button>
                 </>
               )}
             </div>
@@ -153,9 +218,14 @@ export default function JobQueue() {
 
             <div className="flex justify-end gap-3 mt-8 border-t border-border pt-4">
               {selectedJob.status === 'failed' && (
-                <button className="px-4 py-2 text-sm border border-border text-foreground hover:bg-foreground/5 flex items-center gap-2 cursor-pointer transition-colors">
-                  <RotateCcw className="w-4 h-4" /> Retry Request
-                </button>
+                <>
+                  <button onClick={() => handleRetry(selectedJob.id)} className="px-4 py-2 text-sm border border-border text-foreground hover:bg-foreground/5 flex items-center gap-2 cursor-pointer transition-colors">
+                    <RotateCcw className="w-4 h-4" /> Retry Request
+                  </button>
+                  <button onClick={() => handleCancel(selectedJob.id)} className="px-4 py-2 text-sm border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-2 cursor-pointer transition-colors">
+                    <XCircle className="w-4 h-4" /> Cancel Request
+                  </button>
+                </>
               )}
               <button onClick={() => setSelectedJob(null)} className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer">
                 Close

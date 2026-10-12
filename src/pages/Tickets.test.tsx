@@ -50,4 +50,54 @@ describe('Tickets', () => {
     render(<MemoryRouter initialEntries={['/new']}><TicketsRouter /></MemoryRouter>);
     expect(screen.getAllByText(/Create Ticket/).length).toBeGreaterThan(0);
   });
+
+  it('renders ticket detail with message attachments', async () => {
+    const mockDetailTicket = { ...mockTicket, id: 't1' };
+    const mockTicketMessages = [
+      {
+        id: 'm1',
+        ticket_id: 't1',
+        author_id: 'c1',
+        author_type: 'customer' as const,
+        content: 'Screenshot attached',
+        internal: false,
+        created_at: '2026-08-25T10:00:00Z',
+        attachments: [
+          {
+            id: 'att-1',
+            filename: 'issue.png',
+            url: '/uploads/tickets/issue.png',
+            size: 15360,
+            content_type: 'image/png',
+          },
+        ],
+      },
+    ];
+    const noopRefetch = vi.fn();
+
+    mockUseApi.mockImplementation((url: string) => {
+      if (url === '/admin/tickets/t1') {
+        return { data: mockDetailTicket, loading: false, error: null, refetch: noopRefetch };
+      }
+      if (url === '/admin/tickets/t1/messages') {
+        return {
+          data: mockTicketMessages,
+          loading: false,
+          error: null,
+          refetch: noopRefetch,
+        };
+      }
+      return { data: null, loading: false, error: null, refetch: noopRefetch };
+    });
+
+    const TicketsRouter = (await import('./Tickets')).default;
+    const { unmount } = render(<MemoryRouter initialEntries={['/t1']}><TicketsRouter /></MemoryRouter>);
+
+    expect(screen.getByText('Screenshot attached')).toBeDefined();
+    const img = screen.getByRole('img', { name: 'issue.png' });
+    expect(img).toBeDefined();
+    expect(img.getAttribute('src')).toBe('/uploads/tickets/issue.png');
+    expect(screen.getByText(/Attach Image \(Max 10MB\)/)).toBeDefined();
+    unmount();
+  });
 });

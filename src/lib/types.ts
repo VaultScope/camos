@@ -42,7 +42,6 @@ export interface Service {
   id: string;
   customer_id: string;
   product_id: string;
-  connector_id: string | null;
   name: string;
   status: 'running' | 'suspended' | 'pending' | 'terminated';
   provider_resource_id: string;
@@ -51,16 +50,6 @@ export interface Service {
   config: Record<string, unknown>;
   price: string;
   next_due: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Connector {
-  id: string;
-  name: string;
-  provider: string;
-  status: 'connected' | 'error' | 'not_configured';
-  last_tested_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +70,14 @@ export interface Ticket {
   updated_at: string;
 }
 
+export interface TicketAttachment {
+  id: string;
+  filename: string;
+  url: string;
+  size: number;
+  content_type: string;
+}
+
 export interface TicketMessage {
   id: string;
   ticket_id: string;
@@ -88,6 +85,7 @@ export interface TicketMessage {
   author_type: 'staff' | 'customer' | 'system';
   content: string;
   internal: boolean;
+  attachments?: TicketAttachment[] | null;
   created_at: string;
 }
 
@@ -159,7 +157,6 @@ export interface Job {
   id: string;
   task: string;
   target_api: string;
-  connector_id: string | null;
   customer_id: string | null;
   service_id: string | null;
   status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';

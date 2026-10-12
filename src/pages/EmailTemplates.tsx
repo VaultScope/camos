@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { ArrowLeft, Eye, Save, ToggleLeft, ToggleRight, Copy } from 'lucide-react';
+import { ArrowLeft, Eye, Save, ToggleLeft, ToggleRight, Copy, Send, Mail, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { EmailTemplate } from '../lib/types';
@@ -39,6 +39,10 @@ export default function EmailTemplatesPage() {
   const [previewing, setPreviewing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<any | null>(null);
 
   const items = templates || [];
 
@@ -48,6 +52,7 @@ export default function EmailTemplatesPage() {
     setEditBody(t.body);
     setEditMailboxId(t.mailbox_id || '');
     setPreviewing(false);
+    setTestResult(null);
   };
 
   const handleSave = async () => {
@@ -56,6 +61,22 @@ export default function EmailTemplatesPage() {
     setSaved(true);
     refetch();
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleTestSend = async () => {
+    if (!testRecipient.trim() || !editing) return;
+    setTestSending(true);
+    try {
+      const res = await api.post(`/admin/email-templates/${editing}/test`, {
+        recipient: testRecipient.trim()
+      });
+      setTestResult(res);
+      toast.success(`Test email dispatched to ${testRecipient}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to dispatch test email');
+    } finally {
+      setTestSending(false);
+    }
   };
 
   const toggleEnabled = async (t: EmailTemplate) => {
@@ -95,6 +116,12 @@ export default function EmailTemplatesPage() {
             <span className="text-xs text-muted-foreground uppercase tracking-wider">{categoryLabels[currentTemplate.category] || currentTemplate.category}</span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowTestModal(true); setTestResult(null); }}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
+            >
+              <Send className="w-4 h-4 text-blue-400" /> Send Test
+            </button>
             <button
               onClick={() => setPreviewing(!previewing)}
               className={`flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer ${previewing ? 'bg-foreground/5' : ''}`}
@@ -189,6 +216,57 @@ export default function EmailTemplatesPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {showTestModal && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-background border border-border shadow-lg p-6 w-full max-w-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-medium flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" /> Send Test Email
+                </h3>
+                <button onClick={() => setShowTestModal(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Dispatches a test message of <strong>{currentTemplate.name}</strong> with sample variable substitution.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Recipient Address</label>
+                  <input
+                    type="email"
+                    value={testRecipient}
+                    onChange={e => setTestRecipient(e.target.value)}
+                    placeholder="e.g. admin@vaultscope.de"
+                    className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  />
+                </div>
+                {testResult && (
+                  <div className="p-3 border border-green-500/30 bg-green-500/5 text-xs space-y-2">
+                    <div className="text-green-500 font-medium">Test Dispatched Successfully!</div>
+                    <div><strong>Subject:</strong> {testResult.rendered_subject}</div>
+                    <div className="font-mono text-[11px] max-h-32 overflow-y-auto bg-background p-2 border border-border whitespace-pre-wrap">
+                      {testResult.rendered_body}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button onClick={() => setShowTestModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5 cursor-pointer">
+                  Close
+                </button>
+                <button
+                  onClick={handleTestSend}
+                  disabled={!testRecipient.trim() || testSending}
+                  className="px-4 py-2 bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" /> {testSending ? 'Sending...' : 'Send'}
+                </button>
+              </div>
             </div>
           </div>
         )}

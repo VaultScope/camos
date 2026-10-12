@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { AlertTriangle, CreditCard, Server, LifeBuoy, HardDrive, Plug, CheckCircle2, Check } from 'lucide-react';
+import { AlertTriangle, CreditCard, Server, LifeBuoy, HardDrive, CheckCircle2, Check } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { Notification } from '../lib/types';
@@ -11,7 +11,6 @@ const CATEGORY_META: Record<string, { icon: typeof AlertTriangle; label: string 
   provisioning: { icon: Server, label: 'Provisioning' },
   ticket: { icon: LifeBuoy, label: 'Ticket' },
   stock: { icon: HardDrive, label: 'Stock' },
-  connector: { icon: Plug, label: 'Connector' },
 };
 
 export default function NotificationsPage() {
@@ -71,7 +70,6 @@ export default function NotificationsPage() {
           <option value="provisioning">Provisioning</option>
           <option value="ticket">Tickets</option>
           <option value="stock">Stock</option>
-          <option value="connector">Connectors</option>
         </select>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { ArrowLeft, Terminal, ShieldAlert, Power, RefreshCw, HardDrive, Wifi, X } from 'lucide-react';
+import { ArrowLeft, Terminal, ShieldAlert, Power, RefreshCw, HardDrive, Wifi, X, ExternalLink, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import type { Service } from '../lib/types';
@@ -20,6 +20,33 @@ export default function ServiceDetail() {
   const [selectedOs, setSelectedOs] = useState('ubuntu-24.04');
   const [authMethod, setAuthMethod] = useState<'password' | 'ssh'>('password');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // IPMI Modal State
+  const [showIpmiModal, setShowIpmiModal] = useState(false);
+  const [ipmiData, setIpmiData] = useState<any | null>(null);
+  const [ipmiLoading, setIpmiLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleOpenIpmi = async () => {
+    if (!id) return;
+    setShowIpmiModal(true);
+    setIpmiLoading(true);
+    try {
+      const data = await api.post<any>(`/admin/services/${id}/ipmi`, {});
+      setIpmiData(data);
+    } catch (e: any) {
+      alert(e.message || 'Failed to request IPMI session');
+    } finally {
+      setIpmiLoading(false);
+    }
+  };
 
   const handleAction = async (action: 'suspend' | 'reactivate' | 'terminate') => {
     if (!id) return;
@@ -158,12 +185,12 @@ export default function ServiceDetail() {
             </div>
           </button>
 
-          <button className="flex items-center justify-between border border-border p-4 hover:bg-foreground/5 transition-colors group">
+          <button onClick={handleOpenIpmi} className="flex items-center justify-between border border-border p-4 hover:bg-blue-500/10 transition-colors group">
             <div className="flex items-center gap-3">
               <Terminal className="w-5 h-5 text-blue-500" />
               <div className="text-left">
-                <div className="text-sm font-medium group-hover:text-blue-500 transition-colors">Open VNC Console</div>
-                <div className="text-xs text-muted-foreground">Emergency KVM access</div>
+                <div className="text-sm font-medium group-hover:text-blue-500 transition-colors">Out-of-Band IPMI / KVM</div>
+                <div className="text-xs text-muted-foreground">Supermicro / ReliableSite BMC Console</div>
               </div>
             </div>
           </button>
@@ -227,6 +254,99 @@ export default function ServiceDetail() {
               <button onClick={() => setShowReinstall(false)} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Cancel</button>
               <button className="px-4 py-2 text-sm bg-red-500 text-white font-medium hover:bg-red-600 transition-colors">Confirm Reinstall</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showIpmiModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border p-6 max-w-xl w-full relative">
+            <button
+              onClick={() => setShowIpmiModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded">
+                <Terminal className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-light">Out-of-Band IPMI / KVM Session</h2>
+                <p className="text-xs text-muted-foreground">Supermicro BMC Hardware Console</p>
+              </div>
+            </div>
+
+            {ipmiLoading ? (
+              <div className="py-12 text-center text-muted-foreground space-y-3">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-500" />
+                <p className="text-sm">Requesting IPMI session & credentials...</p>
+              </div>
+            ) : ipmiData ? (
+              <div className="space-y-4">
+                <div className="p-3 bg-foreground/5 border border-border text-xs flex items-center justify-between">
+                  <span className="text-muted-foreground">Session Status</span>
+                  <span className="text-green-500 font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 bg-green-500 rounded-full" /> Staff Session Active
+                  </span>
+                </div>
+
+                <div className="border border-border divide-y divide-border text-sm">
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">IPMI Host</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">{ipmiData.ipmi_host}</span>
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_host, 'ipmi_host')} className="text-muted-foreground hover:text-foreground">
+                        {copiedField === 'ipmi_host' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Port</span>
+                    <span className="font-mono text-xs">{ipmiData.ipmi_port} (HTTPS)</span>
+                  </div>
+
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Username</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-semibold">{ipmiData.ipmi_username}</span>
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_username, 'ipmi_username')} className="text-muted-foreground hover:text-foreground">
+                        {copiedField === 'ipmi_username' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Session Password</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">
+                        {showPassword ? ipmiData.ipmi_password : '••••••••••••••••'}
+                      </span>
+                      <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_password, 'ipmi_password')} className="text-muted-foreground hover:text-foreground">
+                        {copiedField === 'ipmi_password' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button onClick={() => setShowIpmiModal(false)} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Close</button>
+                  <button
+                    onClick={() => window.open(ipmiData.web_url, '_blank')}
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Open Web IPMI
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-red-500 text-sm">Failed to generate IPMI session.</div>
+            )}
           </div>
         </div>
       )}

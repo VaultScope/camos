@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Page } from '../components/Layout';
-import { User, Server, CreditCard, LifeBuoy, HardDrive, Shield, Settings, Plug } from 'lucide-react';
+import { User, Server, CreditCard, LifeBuoy, HardDrive, Shield, Settings, Search, Filter, ChevronDown } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import type { ActivityLog as ActivityEntry } from '../lib/types';
 
@@ -12,7 +12,6 @@ const CATEGORY_META: Record<string, { icon: typeof User; label: string }> = {
   product: { icon: HardDrive, label: 'Product' },
   staff: { icon: Shield, label: 'Staff' },
   system: { icon: Settings, label: 'System' },
-  connector: { icon: Plug, label: 'Connector' },
 };
 
 export default function ActivityLogPage() {
@@ -37,30 +36,34 @@ export default function ActivityLogPage() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6 bg-foreground/[0.02] border border-border p-3">
-        <div className="flex-1">
+        <div className="flex-1 relative">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search actions, targets, or details..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full bg-background border border-border pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-foreground"
           />
         </div>
-        <select
-          value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
-          className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground w-40 shrink-0"
-        >
-          <option value="all">All Categories</option>
-          <option value="customer">Customer</option>
-          <option value="service">Service</option>
-          <option value="billing">Billing</option>
-          <option value="ticket">Ticket</option>
-          <option value="product">Product</option>
-          <option value="staff">Staff</option>
-          <option value="system">System</option>
-          <option value="connector">Connector</option>
-        </select>
+        <div className="relative">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            className="bg-background border border-border pl-8 pr-8 py-2 text-sm focus:outline-none focus:border-foreground w-48 shrink-0 appearance-none cursor-pointer"
+          >
+            <option value="all">All Categories</option>
+            <option value="customer">Customer</option>
+            <option value="service">Service</option>
+            <option value="billing">Billing</option>
+            <option value="ticket">Ticket</option>
+            <option value="product">Product</option>
+            <option value="staff">Staff</option>
+            <option value="system">System</option>
+          </select>
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
       </div>
 
       {loading && <div className="p-8 text-center text-muted-foreground text-sm">Loading activity...</div>}

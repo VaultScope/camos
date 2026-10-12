@@ -128,6 +128,30 @@ export default function BillingInvoices() {
     }
   };
 
+  const handleDownloadPdf = async (invId: string, invoiceNumber: string) => {
+    try {
+      const token = localStorage.getItem('vs_admin_token') || localStorage.getItem('vs_token');
+      const res = await fetch(`/api/admin/invoices/${invId}/pdf`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+      if (!res.ok) throw new Error('Failed to download invoice PDF');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`Invoice ${invoiceNumber} downloaded.`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to download invoice PDF');
+    }
+  };
+
   const getCustomerName = (customer_id: string) => {
     const customer = (customers || []).find(c => c.id === customer_id);
     return customer ? customer.name : 'Unknown';
@@ -214,6 +238,13 @@ export default function BillingInvoices() {
               </div>
               <div className="text-muted-foreground">{inv.due_date}</div>
               <div className="text-right space-x-2">
+                <button
+                  onClick={() => handleDownloadPdf(inv.id, inv.invoice_number)}
+                  className="text-xs px-2 py-1 border border-border hover:bg-foreground/5"
+                  title="Download PDF"
+                >
+                  PDF
+                </button>
                 {inv.status === 'draft' && (
                   <>
                     <button onClick={() => handleSend(inv.id)} className="text-xs px-2 py-1 border border-border hover:bg-foreground/5">

@@ -12,4 +12,16 @@ export default defineConfig({
     setupFiles: './src/setupTests.ts',
     exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**'],
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      }
+    }
+  }
 })

@@ -18,7 +18,6 @@ export const mockService = {
   id: 'svc-1',
   customer_id: 'c1',
   product_id: 'p1',
-  connector_id: 'con1',
   name: 'Test VPS',
   status: 'running' as const,
   provider_resource_id: 'htz-123',
@@ -131,15 +130,6 @@ export const mockRole = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
-export const mockConnector = {
-  id: 'con-1',
-  name: 'Hetzner Cloud',
-  provider: 'hetzner_cloud',
-  status: 'connected' as const,
-  last_tested_at: '2026-08-01T00:00:00Z',
-  created_at: '2026-01-01T00:00:00Z',
-  updated_at: '2026-01-01T00:00:00Z',
-};
 
 export const mockNotification = {
   id: 'notif-1',
@@ -157,7 +147,6 @@ export const mockJob = {
   id: 'job-1',
   task: 'provision',
   target_api: 'hetzner_cloud',
-  connector_id: 'con-1',
   customer_id: 'c1',
   service_id: 'svc-1',
   status: 'completed' as const,
