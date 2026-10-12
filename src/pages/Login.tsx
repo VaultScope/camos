@@ -1,7 +1,7 @@
-import { Users, Shield, Headphones, CreditCard, Wrench } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated, loginWithCredentials, devLogin } from '../lib/auth';
+import { isAuthenticated, loginWithCredentials } from '../lib/auth';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -23,16 +23,6 @@ export default function Login() {
       navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
-    }
-  };
-
-  const handleDevLogin = async (persona: string) => {
-    try {
-      setError(null);
-      await devLogin(persona);
-      navigate('/', { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Dev login failed');
     }
   };
 
@@ -76,42 +66,6 @@ export default function Login() {
             Sign in
           </button>
         </form>
-
-        <div className="w-full mt-6 pt-6 border-t border-border">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 text-left font-medium">
-            Quick Dev Login
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleDevLogin('admin1')}
-              className="flex items-center gap-1.5 justify-center p-2 text-xs border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-500" />
-              Owner (admin1)
-            </button>
-            <button
-              onClick={() => handleDevLogin('support1')}
-              className="flex items-center gap-1.5 justify-center p-2 text-xs border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
-            >
-              <Headphones className="w-3.5 h-3.5 text-blue-500" />
-              Support (support1)
-            </button>
-            <button
-              onClick={() => handleDevLogin('billing1')}
-              className="flex items-center gap-1.5 justify-center p-2 text-xs border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-green-500" />
-              Billing (billing1)
-            </button>
-            <button
-              onClick={() => handleDevLogin('tech1')}
-              className="flex items-center gap-1.5 justify-center p-2 text-xs border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
-            >
-              <Wrench className="w-3.5 h-3.5 text-purple-500" />
-              Tech (tech1)
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
