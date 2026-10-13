@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play } from 'lucide-react';
+import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play, Shield, Mail, CheckCircle2, Copy, Check } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
-import type { Customer, Service, Ticket, ActivityLog } from '../lib/types';
+import type { Customer, Service, Ticket, ActivityLog, Role } from '../lib/types';
 
 function CustomerList() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,12 +109,95 @@ function CustomerDetail() {
   const { data: services } = useApi<Service[]>(`/admin/services?customer_id=${id}`);
   const { data: tickets } = useApi<Ticket[]>(`/admin/tickets?customer_id=${id}`);
   const { data: activity } = useApi<ActivityLog[]>(`/admin/activity?customer_id=${id}`);
+  const { data: roles } = useApi<Role[]>('/admin/staff/roles');
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'services' | 'invoices' | 'tickets' | 'activity'>('services');
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
   const [notesInitialized, setNotesInitialized] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [promoteRoleId, setPromoteRoleId] = useState('');
+  const [promoteUsername, setPromoteUsername] = useState('');
+  const [promotePassword, setPromotePassword] = useState('');
+  const [promoting, setPromoting] = useState(false);
+
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const handleResendVerification = async () => {
+    if (!customer || resendingVerification) return;
+    setResendingVerification(true);
+    try {
+      const res = await api.post<{ ok: boolean; message: string; verification_token?: string; verification_link?: string }>(
+        `/admin/customers/${customer.id}/resend-verification`
+      );
+      toast.success(res.message || 'Verification email sent!');
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to resend verification email: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
+  const handleMarkVerified = async () => {
+    if (!customer || verifyingEmail) return;
+    if (!confirm(`Mark ${customer.name}'s email as verified manually?`)) return;
+    setVerifyingEmail(true);
+    try {
+      await api.post(`/admin/customers/${customer.id}/verify`);
+      toast.success('Customer email marked as verified!');
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to verify customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleCopy = (text: string, type: 'link' | 'id') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'link') {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } else {
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+    toast.success('Copied to clipboard');
+  };
+
+  const openPromoteModal = () => {
+    if (!customer) return;
+    const initialUsername = customer.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+    setPromoteUsername(initialUsername);
+    setPromoteRoleId(roles?.[0]?.id || '');
+    setPromotePassword('');
+    setIsPromoteModalOpen(true);
+  };
+
+  const handlePromote = async () => {
+    if (!customer || !promoteRoleId || promoting) return;
+    setPromoting(true);
+    try {
+      await api.post(`/admin/customers/${customer.id}/promote`, {
+        role_id: promoteRoleId,
+        username: promoteUsername.trim() || undefined,
+        password: promotePassword.trim() || undefined,
+      });
+      toast.success(`${customer.name} promoted to staff member successfully!`);
+      setIsPromoteModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to make staff member: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   if (!notesInitialized && customer) {
     setNotes(customer.notes || '');
@@ -183,63 +266,146 @@ function CustomerDetail() {
       </button>
 
       <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="border border-border bg-background p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">{customer.name}</h3>
-            <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider border border-border ${customer.status === 'active' ? 'text-green-500 bg-green-500/5' : customer.status === 'suspended' ? 'text-yellow-500 bg-yellow-500/5' : 'text-red-500 bg-red-500/5'}`}>
-              {customer.status}
-            </span>
+        <div className="border border-border bg-background p-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">{customer.name}</h3>
+              <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider border border-border ${customer.status === 'active' ? 'text-green-500 bg-green-500/5' : customer.status === 'suspended' ? 'text-yellow-500 bg-yellow-500/5' : 'text-red-500 bg-red-500/5'}`}>
+                {customer.status}
+              </span>
+            </div>
+
+            <div className="space-y-2.5 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Email</span>
+                <span className="font-mono text-xs">{customer.email}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Verification</span>
+                <div className="flex items-center gap-1.5">
+                  {customer.email_verified ? (
+                    <span className="text-[10px] px-2 py-0.5 border border-green-500/30 text-green-500 bg-green-500/5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Verified
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] px-2 py-0.5 border border-yellow-500/30 text-yellow-500 bg-yellow-500/5">
+                        Unverified
+                      </span>
+                      <button
+                        onClick={handleMarkVerified}
+                        disabled={verifyingEmail}
+                        className="text-[10px] px-1.5 py-0.5 border border-border hover:bg-foreground/5 cursor-pointer disabled:opacity-50"
+                        title="Manually verify email"
+                      >
+                        {verifyingEmail ? '...' : 'Verify Now'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {customer.verification_token && !customer.email_verified && (
+                <div className="p-2 border border-yellow-500/20 bg-yellow-500/5 space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] uppercase font-medium text-yellow-500">Verification Link</span>
+                    <button
+                      onClick={() => handleCopy(`https://vaultscope.de/verify-email?token=${customer.verification_token}`, 'link')}
+                      className="text-[10px] px-1.5 py-0.5 border border-border bg-background hover:bg-foreground/5 flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
+                      {copiedLink ? 'Copied' : 'Copy Link'}
+                    </button>
+                  </div>
+                  <div className="font-mono text-[10px] truncate text-muted-foreground select-all">
+                    https://vaultscope.de/verify-email?token={customer.verification_token}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Company</span>
+                <span className="text-xs">{customer.company || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Phone</span>
+                <span className="text-xs">{customer.phone || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Address</span>
+                <span className="text-xs text-right max-w-[200px] truncate" title={customer.address}>
+                  {customer.address || '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Postal / City</span>
+                <span className="text-xs">
+                  {[customer.postal_code, customer.city].filter(Boolean).join(' ') || '—'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Country</span>
+                <span className="text-xs">{customer.country || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">VAT ID</span>
+                <span className="font-mono text-xs flex items-center gap-1">
+                  {customer.vat_id || '—'}
+                  {customer.vat_verified && <span className="text-green-500 text-[10px]" title="VAT Verified">✓</span>}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Stripe ID</span>
+                <span className="font-mono text-xs">{customer.stripe_customer_id || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Customer ID</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs" title={customer.id}>{customer.id.slice(0, 8)}...</span>
+                  <button
+                    onClick={() => handleCopy(customer.id, 'id')}
+                    className="p-1 hover:bg-foreground/5 cursor-pointer text-muted-foreground hover:text-foreground"
+                    title="Copy full Customer ID"
+                  >
+                    {copiedId ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">External ID</span>
+                <span className="font-mono text-xs truncate max-w-[150px]" title={customer.external_id}>{customer.external_id || '—'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Registered</span>
+                <span className="text-xs">{customer.created_at?.split('T')[0]}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs uppercase">Last Login</span>
+                <span className="text-xs">{customer.last_login ? customer.last_login.replace('T', ' ').slice(0, 16) : 'Never'}</span>
+              </div>
+            </div>
           </div>
-          {customer.company && <div className="text-sm text-muted-foreground mb-3">{customer.company}</div>}
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Email</span>
-              <span className="font-mono text-xs">{customer.email}</span>
-            </div>
-            {customer.phone && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phone</span>
-                <span>{customer.phone}</span>
-              </div>
-            )}
-            {(customer.city || customer.country) && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Location</span>
-                <span>{[customer.city, customer.country].filter(Boolean).join(', ')}</span>
-              </div>
-            )}
-            {customer.vat_id && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">VAT ID</span>
-                <span className="font-mono text-xs">{customer.vat_id}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Customer ID</span>
-              <span className="font-mono text-xs">{customer.id.slice(0, 8)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Since</span>
-              <span>{customer.created_at?.split('T')[0]}</span>
-            </div>
-            {customer.last_login && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Login</span>
-                <span>{customer.last_login.replace('T', ' ').slice(0, 16)}</span>
-              </div>
-            )}
-          </div>
+
           <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 flex-wrap">
-            {customer.email_verified ? (
-              <span className="text-[10px] px-2 py-0.5 border border-green-500/30 text-green-500">Email Verified</span>
-            ) : (
-              <span className="text-[10px] px-2 py-0.5 border border-yellow-500/30 text-yellow-500">Email Unverified</span>
-            )}
             {customer.two_factor_enabled ? (
-              <span className="text-[10px] px-2 py-0.5 border border-green-500/30 text-green-500">2FA Enabled</span>
+              <span className="text-[10px] px-2 py-0.5 border border-green-500/30 text-green-500 bg-green-500/5">2FA Enabled</span>
             ) : (
               <span className="text-[10px] px-2 py-0.5 border border-border text-muted-foreground">2FA Off</span>
             )}
+            <span className="text-[10px] px-2 py-0.5 border border-border text-muted-foreground">
+              Updated: {customer.updated_at?.split('T')[0] || '-'}
+            </span>
           </div>
         </div>
 
@@ -262,6 +428,27 @@ function CustomerDetail() {
           <div className="border border-border bg-background p-4">
             <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h4>
             <div className="space-y-2">
+              <button
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                {resendingVerification ? 'Sending Email...' : 'Resend Verification Email'}
+              </button>
+              {!customer.email_verified && (
+                <button
+                  onClick={handleMarkVerified}
+                  disabled={verifyingEmail}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-green-500/30 text-green-600 hover:bg-green-500/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  {verifyingEmail ? 'Verifying...' : 'Mark Email as Verified'}
+                </button>
+              )}
+              <button onClick={openPromoteModal} className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
+                <Shield className="w-3.5 h-3.5 text-muted-foreground" /> Make Staff Member
+              </button>
               <button className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
                 <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" /> Impersonate
               </button>
@@ -417,6 +604,84 @@ function CustomerDetail() {
           ) : (
             <div className="p-6 text-center text-sm text-muted-foreground">No recorded activity.</div>
           )}
+        </div>
+      )}
+
+      {isPromoteModalOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-background border border-border shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium flex items-center gap-2">
+                <Shield className="w-5 h-5 text-muted-foreground" /> Make Staff Member
+              </h2>
+              <button onClick={() => setIsPromoteModalOpen(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4">
+              Promote <span className="font-medium text-foreground">{customer.name}</span> ({customer.email}) to an administrative staff account.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Administrative Role</label>
+                <select
+                  value={promoteRoleId}
+                  onChange={e => setPromoteRoleId(e.target.value)}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                >
+                  <option value="" disabled>Select Role...</option>
+                  {roles?.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Staff Username</label>
+                <input
+                  type="text"
+                  value={promoteUsername}
+                  onChange={e => setPromoteUsername(e.target.value)}
+                  placeholder="e.g. johndoe"
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Password (Optional)</label>
+                <input
+                  type="password"
+                  value={promotePassword}
+                  onChange={e => setPromotePassword(e.target.value)}
+                  placeholder="Leave empty to use customer password"
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                />
+                <span className="text-[11px] text-muted-foreground mt-1 block">
+                  Leave empty to retain this customer's current password for admin login.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setIsPromoteModalOpen(false)}
+                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePromote}
+                disabled={!promoteRoleId || promoting}
+                className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-2"
+              >
+                {promoting ? 'Promoting...' : 'Make Staff Member'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Page>

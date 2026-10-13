@@ -6,12 +6,15 @@ export interface Customer {
   phone: string;
   company: string;
   address: string;
+  postal_code?: string;
   city: string;
   country: string;
   vat_id: string;
+  vat_verified?: boolean;
   status: 'active' | 'suspended' | 'banned';
   two_factor_enabled: boolean;
   email_verified: boolean;
+  verification_token?: string | null;
   notes: string;
   stripe_customer_id: string | null;
   created_at: string;

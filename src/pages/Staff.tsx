@@ -5,7 +5,7 @@ import { Shield, Users, Plus, Edit2, Camera, Key, Mail, CheckCircle2, Trash2 } f
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
-import type { Staff, Role } from '../lib/types';
+import type { Staff, Role, Customer } from '../lib/types';
 
 interface StaffWithRole extends Staff {
   role_name: string;
@@ -181,7 +181,7 @@ function StaffAccount() {
                     <Key className="w-5 h-5 text-muted-foreground" />
                     <div>
                       <div className="text-sm font-medium">Password Management</div>
-                      <div className="text-xs text-muted-foreground">Passwords are managed through Authentik. Use your identity provider to change credentials.</div>
+                      <div className="text-xs text-muted-foreground">Credentials are managed securely. Passwords can be updated by an administrator or through account settings.</div>
                     </div>
                   </div>
                 </div>
@@ -198,11 +198,13 @@ function StaffMembers() {
   const [searchStaff, setSearchStaff] = useState('');
   const { data: staffList, loading, error, refetch } = useApi<StaffWithRole[]>('/admin/staff');
   const { data: roles } = useApi<Role[]>('/admin/staff/roles');
+  const { data: customers } = useApi<Customer[]>('/admin/customers');
   const toast = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [editStaff, setEditStaff] = useState({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: '' });
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [editStaff, setEditStaff] = useState({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: '', password: '' });
   const [saving, setSaving] = useState(false);
 
   const items = staffList || [];
@@ -214,25 +216,69 @@ function StaffMembers() {
   );
 
   const openCreateModal = () => {
-    setEditStaff({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: roles?.[0]?.id || '' });
+    setSelectedCustomerId('');
+    setEditStaff({ id: '', first_name: '', last_name: '', username: '', email: '', role_id: roles?.[0]?.id || '', password: '' });
     setModalMode('create');
     setIsModalOpen(true);
   };
 
   const openEditModal = (s: StaffWithRole) => {
-    setEditStaff({ id: s.id, first_name: s.first_name, last_name: s.last_name, username: s.username, email: s.email, role_id: s.role_id || roles?.[0]?.id || '' });
+    setSelectedCustomerId('');
+    setEditStaff({ id: s.id, first_name: s.first_name, last_name: s.last_name, username: s.username, email: s.email, role_id: s.role_id || roles?.[0]?.id || '', password: '' });
     setModalMode('edit');
     setIsModalOpen(true);
+  };
+
+  const handleSelectCustomer = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    if (!customerId) return;
+    const c = customers?.find(item => item.id === customerId);
+    if (c) {
+      const parts = c.name.trim().split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+      const username = c.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '');
+      setEditStaff(prev => ({
+        ...prev,
+        first_name: firstName,
+        last_name: lastName,
+        username,
+        email: c.email,
+      }));
+    }
   };
 
   const handleSave = async () => {
     if (!editStaff.username.trim() || !editStaff.email.trim() || saving) return;
     setSaving(true);
     try {
-      if (modalMode === 'create') {
-        await api.post('/admin/staff', editStaff);
+      if (modalMode === 'create' && selectedCustomerId) {
+        await api.post(`/admin/customers/${selectedCustomerId}/promote`, {
+          role_id: editStaff.role_id,
+          username: editStaff.username.trim() || undefined,
+          password: editStaff.password.trim() || undefined,
+        });
+        toast.success('Customer promoted to staff successfully');
+      } else if (modalMode === 'create') {
+        await api.post('/admin/staff', {
+          first_name: editStaff.first_name,
+          last_name: editStaff.last_name,
+          username: editStaff.username,
+          email: editStaff.email,
+          role_id: editStaff.role_id,
+          password: editStaff.password.trim() || undefined,
+        });
+        toast.success('Staff member created successfully');
       } else {
-        await api.put(`/admin/staff/${editStaff.id}`, editStaff);
+        await api.put(`/admin/staff/${editStaff.id}`, {
+          first_name: editStaff.first_name,
+          last_name: editStaff.last_name,
+          username: editStaff.username,
+          email: editStaff.email,
+          role_id: editStaff.role_id,
+          password: editStaff.password.trim() || undefined,
+        });
+        toast.success('Staff member updated successfully');
       }
       setIsModalOpen(false);
       refetch();
@@ -353,6 +399,28 @@ function StaffMembers() {
             </div>
 
             <div className="space-y-4">
+              {modalMode === 'create' && (
+                <div className="p-3 border border-border bg-foreground/[0.02]">
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                    Import from Existing Customer (Optional)
+                  </label>
+                  <select
+                    value={selectedCustomerId}
+                    onChange={e => handleSelectCustomer(e.target.value)}
+                    className="w-full border border-border bg-background p-2 text-sm focus:outline-none focus:border-foreground"
+                  >
+                    <option value="">-- Create Fresh Staff Member --</option>
+                    {customers?.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.email})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-muted-foreground mt-1 block">
+                    Select an existing customer to promote them and link their account.
+                  </span>
+                </div>
+              )}
               {modalMode === 'edit' && (
                 <div className="mb-4">
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Upload Avatar</label>
@@ -376,6 +444,18 @@ function StaffMembers() {
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email</label>
                 <input type="email" value={editStaff.email} onChange={e => setEditStaff({...editStaff, email: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Password {modalMode === 'edit' ? '(Leave empty to keep unchanged)' : selectedCustomerId ? '(Optional - uses customer password if empty)' : '(Optional)'}
+                </label>
+                <input
+                  type="password"
+                  value={editStaff.password}
+                  onChange={e => setEditStaff({...editStaff, password: e.target.value})}
+                  placeholder={modalMode === 'edit' ? '••••••••' : selectedCustomerId ? 'Leave empty to use customer password' : 'Enter password...'}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Role</label>
