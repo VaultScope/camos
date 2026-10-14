@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play, Shield, Mail, CheckCircle2, Copy, Check } from 'lucide-react';
+import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play, Shield, Mail, CheckCircle2, Copy, Check, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -10,7 +10,19 @@ import type { Customer, Service, Ticket, ActivityLog, Role } from '../lib/types'
 function CustomerList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const { data: customers, loading, error } = useApi<Customer[]>('/admin/customers');
+  const { data: customers, loading, error, refetch } = useApi<Customer[]>('/admin/customers');
+  const toast = useToast();
+
+  const handleDeleteCustomer = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to permanently delete customer account "${name}"? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/customers/${id}`);
+      toast.success('Customer account deleted successfully');
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to delete customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   const filtered = (customers || []).filter(c => {
     const matchesSearch =
@@ -90,6 +102,14 @@ function CustomerList() {
                 <Link to={`/customers/${c.id}`} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit/View">
                   <ExternalLink className="w-4 h-4" />
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomer(c.id, c.name)}
+                  className="text-xs border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  title="Delete Account"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -196,6 +216,23 @@ function CustomerDetail() {
       toast.error(`Failed to make staff member: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setPromoting(false);
+    }
+  };
+
+  const [deletingCustomer, setDeletingCustomer] = useState(false);
+
+  const handleDeleteCustomer = async () => {
+    if (!customer || deletingCustomer) return;
+    if (!confirm(`Are you absolutely sure you want to permanently delete customer account "${customer.name}" (${customer.email})? This action cannot be undone.`)) return;
+    setDeletingCustomer(true);
+    try {
+      await api.delete(`/admin/customers/${customer.id}`);
+      toast.success('Customer account deleted successfully');
+      navigate('/customers');
+    } catch (err) {
+      toast.error(`Failed to delete customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setDeletingCustomer(false);
     }
   };
 
@@ -468,6 +505,13 @@ function CustomerDetail() {
                   <Play className="w-3.5 h-3.5 text-muted-foreground" /> {updating ? 'Processing...' : 'Reactivate'}
                 </button>
               )}
+              <button
+                onClick={handleDeleteCustomer}
+                disabled={deletingCustomer}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> {deletingCustomer ? 'Deleting...' : 'Delete Customer Account'}
+              </button>
             </div>
           </div>
           <div className="border border-border bg-background p-4">

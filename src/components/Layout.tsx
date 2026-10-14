@@ -22,7 +22,9 @@ import {
   Shield,
   Search,
   HelpCircle,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { getStoredClaims, logout, hasPermission } from '../lib/auth';
 import { useApi } from '../lib/hooks';
@@ -183,6 +185,7 @@ export function Sidebar() {
           ],
         },
         { name: 'Coupons', path: '/coupons', icon: Tag },
+        { name: 'Partners', path: '/partners', icon: Sparkles },
       ],
     },
     {
@@ -229,7 +232,7 @@ export function Sidebar() {
           <img src="/camos.png" alt="CAMOS Logo" className="w-9 h-9 object-contain shrink-0" />
           <div className="min-w-0">
             <h1 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
-              CAMOS <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-foreground/10 text-muted-foreground">v2.4</span>
+              CAMOS <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-foreground/10 text-muted-foreground">v2.5</span>
             </h1>
             <p className="text-[10px] text-muted-foreground truncate">Operations Control Plane</p>
           </div>
@@ -278,6 +281,24 @@ export function Sidebar() {
             ))}
           </div>
         )}
+
+        <div className="mt-2 border-t border-border/40 pt-2">
+          <div className="px-6 pt-2 pb-1">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+              Community
+            </span>
+          </div>
+          <a
+            href="https://discord.gg/84kMAY2aKm"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-3 px-6 py-2 text-xs transition-colors text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground"
+          >
+            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+            <span className="truncate">Discord Server</span>
+            <ExternalLink className="w-3 h-3 ml-auto opacity-40" />
+          </a>
+        </div>
       </div>
 
       <div className="p-4 border-t border-border bg-foreground/[0.01]">
@@ -300,28 +321,26 @@ export function Sidebar() {
   );
 }
 
-export function TopNav({ title: _title }: { title: string }) {
+function BreadcrumbLink({ to, children, className, inRouter }: { to: string; children: React.ReactNode; className?: string; inRouter: boolean }) {
+  if (inRouter) {
+    return <Link to={to} className={className}>{children}</Link>;
+  }
+  return <span className={className}>{children}</span>;
+}
+
+function TopNavWithRouter({ title: _title }: { title: string }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
-  const inRouter = useInRouterContext();
-  const location = inRouter ? useLocation() : { pathname: '/' };
+  const location = useLocation();
   const { explainMode, toggleExplainMode } = useExplainMode();
 
-  // Create simple breadcrumb from pathname
   const pathSegments = location.pathname.split('/').filter(Boolean);
-
-  const BreadcrumbLink = ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => {
-    if (inRouter) {
-      return <Link to={to} className={className}>{children}</Link>;
-    }
-    return <span className={className}>{children}</span>;
-  };
 
   return (
     <>
       <header className="sticky top-0 z-10 w-full h-14 bg-background/90 backdrop-blur-md border-b border-border px-8 flex items-center justify-between">
         {/* Left: Breadcrumbs & Page Title */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <BreadcrumbLink to="/" className="hover:text-foreground transition-colors font-medium">CAMOS</BreadcrumbLink>
+          <BreadcrumbLink to="/" inRouter={true} className="hover:text-foreground transition-colors font-medium">CAMOS</BreadcrumbLink>
           {pathSegments.length > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground/40" />}
           {pathSegments.map((seg, idx) => {
             const isLast = idx === pathSegments.length - 1;
@@ -332,7 +351,7 @@ export function TopNav({ title: _title }: { title: string }) {
                   <span className="text-foreground font-semibold capitalize">{seg.replace(/-/g, ' ')}</span>
                 ) : (
                   <>
-                    <BreadcrumbLink to={path} className="hover:text-foreground transition-colors capitalize">{seg}</BreadcrumbLink>
+                    <BreadcrumbLink to={path} inRouter={true} className="hover:text-foreground transition-colors capitalize">{seg}</BreadcrumbLink>
                     <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
                   </>
                 )}
@@ -379,9 +398,27 @@ export function TopNav({ title: _title }: { title: string }) {
         </div>
       </header>
 
-      {inRouter && <CommandPalette isOpen={isCommandOpen} onClose={() => setIsCommandOpen(false)} />}
+      <CommandPalette isOpen={isCommandOpen} onClose={() => setIsCommandOpen(false)} />
     </>
   );
+}
+
+function TopNavStatic({ title: _title }: { title: string }) {
+  return (
+    <header className="sticky top-0 z-10 w-full h-14 bg-background/90 backdrop-blur-md border-b border-border px-8 flex items-center justify-between">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="hover:text-foreground transition-colors font-medium">CAMOS</span>
+      </div>
+    </header>
+  );
+}
+
+export function TopNav({ title }: { title: string }) {
+  const inRouter = useInRouterContext();
+  if (inRouter) {
+    return <TopNavWithRouter title={title} />;
+  }
+  return <TopNavStatic title={title} />;
 }
 
 export function Page({

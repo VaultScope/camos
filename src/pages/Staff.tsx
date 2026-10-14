@@ -508,10 +508,10 @@ function StaffRbac() {
     Billing: ['billing.view', 'billing.manage', 'invoices.view', 'invoices.manage', 'invoices.create', 'invoices.edit', 'invoices.delete', 'tax.manage', 'coupons.manage'],
     Services: ['services.view', 'services.manage', 'services.power', 'services.reinstall', 'services.suspend', 'services.terminate'],
     Jobs: ['jobs.view', 'jobs.manage'],
-    Staff: ['staff.view', 'staff.manage', 'rbac.manage'],
+    Staff: ['staff.view', 'staff.manage', 'staff.delete', 'accounts.delete', 'rbac.manage'],
     Products: ['products.view', 'products.manage', 'products.create', 'products.edit', 'products.delete', 'forms.manage'],
     Tickets: ['tickets.view', 'tickets.manage', 'tickets.reply', 'departments.manage'],
-    System: ['settings.manage', 'templates.manage', 'activity.view', 'reports.view']
+    System: ['settings.manage', 'templates.manage', 'email_logs.view', 'email_logs.manage', 'activity.view', 'reports.view']
   };
 
   const handleTogglePerm = (perm: string) => {
@@ -660,7 +660,7 @@ function StaffRbac() {
                       else if (template === 'Billing') perms = ['billing.manage', 'invoices.manage', 'customers.view'];
                       else if (template === 'Technical') perms = ['tickets.manage', 'services.manage', 'services.power'];
                       else if (template === 'Infrastructure Admin') perms = ['services.manage', 'services.power', 'services.reinstall'];
-                      else if (template === 'Account Manager') perms = ['customers.manage', 'staff.manage'];
+                      else if (template === 'Account Manager') perms = ['customers.manage', 'customers.delete', 'staff.manage', 'staff.delete', 'accounts.delete'];
                       else if (template === 'Root') perms = ['*'];
                       
                       if (template) {

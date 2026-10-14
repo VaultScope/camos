@@ -34,6 +34,151 @@
   .border-foreground {
     border-color: var(--foreground);
   }
+
+  .markdown-preview h1 {
+    font-size: 1.75rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--foreground);
+  }
+  .markdown-preview h2 {
+    font-size: 1.375rem;
+    line-height: 1.875rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    color: var(--foreground);
+  }
+  .markdown-preview h3 {
+    font-size: 1.125rem;
+    line-height: 1.625rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: var(--foreground);
+  }
+  .markdown-preview h4 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--foreground);
+  }
+  .markdown-preview p {
+    line-height: 1.7;
+    margin-bottom: 1rem;
+    color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  }
+  .markdown-preview a {
+    color: #3b82f6;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .markdown-preview a:hover {
+    color: #60a5fa;
+  }
+  .markdown-preview strong {
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .markdown-preview em {
+    font-style: italic;
+  }
+  .markdown-preview ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+    color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  }
+  .markdown-preview ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+    color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  }
+  .markdown-preview li {
+    margin-bottom: 0.35rem;
+    line-height: 1.6;
+  }
+  .markdown-preview blockquote {
+    border-left: 4px solid #3b82f6;
+    background-color: color-mix(in oklch, var(--primary) 8%, transparent);
+    padding: 0.625rem 1rem;
+    margin: 1.25rem 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+    font-style: italic;
+    color: color-mix(in oklch, var(--foreground) 80%, transparent);
+  }
+  .markdown-preview pre {
+    background-color: color-mix(in oklch, var(--muted) 70%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .markdown-preview code {
+    background-color: color-mix(in oklch, var(--muted) 80%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    padding: 0.15rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    color: var(--foreground);
+  }
+  .markdown-preview pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .markdown-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    font-size: 0.875rem;
+    border: 1px solid var(--border);
+  }
+  .markdown-preview th {
+    border: 1px solid var(--border);
+    background-color: color-mix(in oklch, var(--muted) 60%, transparent);
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .markdown-preview td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  }
+  .markdown-preview tr:nth-child(even) {
+    background-color: color-mix(in oklch, var(--muted) 25%, transparent);
+  }
+  .markdown-preview img {
+    max-width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    margin: 1.25rem 0;
+  }
+  .markdown-preview hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+  .markdown-preview input[type="checkbox"] {
+    margin-right: 0.5rem;
+  }
 }
 
 :root {

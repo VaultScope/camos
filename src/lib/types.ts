@@ -32,6 +32,9 @@ export interface Product {
   cost: string;
   price: string;
   setup_fee: string;
+  trial_days?: number | null;
+  trial_quota_gb?: number | null;
+  quota_gb?: number | null;
   stock: number;
   user_limit: number;
   billing_cycle: 'monthly' | 'yearly' | 'one_time';
@@ -53,6 +56,11 @@ export interface Service {
   config: Record<string, unknown>;
   price: string;
   next_due: string | null;
+  is_trial?: boolean;
+  trial_ends_at?: string | null;
+  partner_id?: string | null;
+  quota_gb?: number | null;
+  cancel_at_period_end?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -273,4 +281,51 @@ export interface AuthClaims {
   permissions?: string[];
   exp: number;
   iat: number;
+}
+
+export interface Partner {
+  id: string;
+  slug: string;
+  name: string;
+  headline?: string | null;
+  description?: string | null;
+  badge_text?: string | null;
+  product_id: string;
+  trial_days_override?: number | null;
+  trial_quota_gb_override?: number | null;
+  quota_gb_override?: number | null;
+  active: boolean;
+  clicks: number;
+  conversions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartnerWithProduct {
+  id: string;
+  slug: string;
+  name: string;
+  headline?: string | null;
+  description?: string | null;
+  badge_text?: string | null;
+  product_id: string;
+  product_name: string;
+  product_price: string;
+  product_trial_days?: number | null;
+  trial_days_override?: number | null;
+  trial_quota_gb_override?: number | null;
+  quota_gb_override?: number | null;
+  product_trial_quota_gb?: number | null;
+  product_quota_gb?: number | null;
+  limit_one_per_user?: boolean;
+  active: boolean;
+  clicks: number;
+  conversions: number;
+  commission_type?: 'percent' | 'fixed' | 'none' | null;
+  commission_rate?: string | number | null;
+  commission_fixed_eur?: string | number | null;
+  per_sale_commission_eur?: string | number;
+  earned_commission_eur?: string | number;
+  created_at: string;
+  updated_at: string;
 }

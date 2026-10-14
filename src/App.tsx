@@ -16,6 +16,7 @@ import ServiceForms from './pages/ServiceForms';
 import JobQueue from './pages/JobQueue';
 import Staff from './pages/Staff';
 import Coupons from './pages/CouponsNew';
+import Partners from './pages/Partners';
 import Launchpad from './pages/Launchpad';
 import Login from './pages/Login';
 import EmailLogs from './pages/EmailLogs';
@@ -47,6 +48,7 @@ export default function App() {
                     <Route path="/customers/*" element={<Customers />} />
                     <Route path="/billing/*" element={<BillingRouter />} />
                     <Route path="/coupons" element={<Coupons />} />
+                    <Route path="/partners" element={<Partners />} />
                     <Route path="/tickets/*" element={<Tickets />} />
                     <Route path="/services/*" element={<Services />} />
                     <Route path="/blog" element={<BlogList />} />

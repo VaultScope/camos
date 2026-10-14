@@ -34,11 +34,20 @@ export function getToken(): string | null {
   return localStorage.getItem('vs_admin_token');
 }
 
-export async function loginWithCredentials(email: string, password: string):Promise<AuthClaims> {
+export async function loginWithCredentials(
+  email: string,
+  password: string,
+  totpCode?: string
+): Promise<AuthClaims> {
+  const payload: Record<string, any> = { email, password, audience: 'admin' };
+  if (totpCode) {
+    payload.totp_code = totpCode.trim();
+  }
+
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, audience: 'admin' }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -46,7 +55,14 @@ export async function loginWithCredentials(email: string, password: string):Prom
     throw new Error(body.error || 'Login failed');
   }
 
-  const { token, claims } = await res.json();
+  const data = await res.json();
+  if (data.mfa_required) {
+    const mfaErr: any = new Error('MFA_REQUIRED');
+    mfaErr.mfaRequired = true;
+    throw mfaErr;
+  }
+
+  const { token, claims } = data;
   localStorage.setItem('vs_admin_token', token);
   localStorage.setItem('vs_admin_claims', JSON.stringify(claims));
   return claims;

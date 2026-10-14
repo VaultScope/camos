@@ -108,7 +108,14 @@ export default function ServiceDetail() {
       <div className="grid grid-cols-3 gap-6 mb-8">
         <div className="col-span-2 border border-border divide-y divide-border bg-background">
           <div className="p-4 bg-foreground/5 font-medium flex justify-between items-center">
-            <span>{service.name}</span>
+            <div className="flex items-center gap-2">
+              <span>{service.name}</span>
+              {service.is_trial && (
+                <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded font-mono">
+                  Active Trial
+                </span>
+              )}
+            </div>
             <span className={`flex items-center gap-2 text-xs ${statusColor}`}>
               <div className={`w-2 h-2 rounded-full ${statusColor.replace('text-', 'bg-')}`} />
               {service.status}
@@ -132,8 +139,15 @@ export default function ServiceDetail() {
               <div className="text-sm">{new Date(service.created_at).toLocaleDateString()}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Next Due</div>
-              <div className="text-sm">{service.next_due?.split('T')[0] || '—'}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                {service.is_trial ? 'Trial Ends / First Due' : 'Next Due'}
+              </div>
+              <div className="text-sm font-medium">
+                {service.next_due?.split('T')[0] || '—'}
+                {service.is_trial && (
+                  <span className="text-xs text-blue-400 ml-2">(Trial Period)</span>
+                )}
+              </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Provider Resource</div>
