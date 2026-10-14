@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
@@ -31,13 +31,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
-    setToasts(prev => [...prev, { id, message, type }]);
-
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
+    setToasts(prev => {
+      // Prevent consecutive identical toast spam
+      if (prev.length > 0 && prev[prev.length - 1].message === message && prev[prev.length - 1].type === type) {
+        return prev;
+      }
+      const id = `toast-${Date.now()}-${Math.random()}`;
+      setTimeout(() => {
+        setToasts(curr => curr.filter(t => t.id !== id));
+      }, 5000);
+      return [...prev.slice(-3), { id, message, type }];
+    });
   }, []);
 
   const success = useCallback((message: string) => showToast(message, 'success'), [showToast]);
@@ -48,8 +52,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const value = useMemo(
+    () => ({ showToast, success, error, info }),
+    [showToast, success, error, info]
+  );
+
   return (
-    <ToastContext.Provider value={{ showToast, success, error, info }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md">
         {toasts.map(toast => (

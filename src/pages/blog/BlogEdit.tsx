@@ -140,7 +140,7 @@ export default function BlogEdit() {
         })
         .finally(() => setIsLoading(false));
     }
-  }, [id, isNew, toast]);
+  }, [id, isNew]);
 
   // Tag management helpers
   const handleAddTag = (rawTag: string) => {
