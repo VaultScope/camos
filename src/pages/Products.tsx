@@ -924,6 +924,8 @@ function toApiPayload(p: ProductFormData) {
     trial_days: p.trialDays > 0 ? p.trialDays : null,
     trial_quota_gb: p.trialDays > 0 && p.trialQuotaGb && p.trialQuotaGb > 0 ? p.trialQuotaGb : null,
     quota_gb: p.quotaGb && p.quotaGb > 0 ? p.quotaGb : null,
+    service_form_id: p.serviceFormId || null,
+    hidden: p.hidden,
   };
 }
 
@@ -1007,6 +1009,7 @@ function ProductsInsights() {
 function ProductsNew() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { data: serviceForms } = useApi<any[]>('/admin/service-forms');
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -1239,6 +1242,28 @@ function ProductsNew() {
                   className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
                   placeholder="e.g. cpx21 or sftp-250"
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">Checkout Configuration Form (CAMOS Service Form)</label>
+                  <HelpTooltip
+                    title="Custom Configuration Step"
+                    content="Attach a custom CAMOS Service Form if customers should fill out custom configuration fields during checkout. Leave as 'None' for instant turn-key services like SFTP."
+                  />
+                </div>
+                <select
+                  value={newPlan.serviceFormId}
+                  onChange={e => setNewPlan({ ...newPlan, serviceFormId: e.target.value })}
+                  className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                >
+                  <option value="">None (No configuration step required)</option>
+                  {(serviceForms || []).map((f: any) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({Array.isArray(f.fields) ? f.fields.length : 0} fields)
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )}
@@ -1593,6 +1618,7 @@ function ProductsList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const { data: products, loading, error, refetch } = useApi<Product[]>('/admin/products');
+  const { data: serviceForms } = useApi<any[]>('/admin/service-forms');
   const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<(ProductFormData & { id: string }) | null>(null);
@@ -1824,6 +1850,27 @@ function ProductsList() {
                   onChange={e => setEditPlan({ ...editPlan, target: e.target.value })}
                   className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Checkout Configuration Form (CAMOS Service Form)
+                </label>
+                <select
+                  value={editPlan.serviceFormId || ''}
+                  onChange={e => setEditPlan({ ...editPlan, serviceFormId: e.target.value })}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                >
+                  <option value="">None (No configuration step required)</option>
+                  {(serviceForms || []).map((f: any) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({Array.isArray(f.fields) ? f.fields.length : 0} fields)
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  Only attach a form if this service requires custom checkout configuration. Leave as None for SFTP or zero-config plans.
+                </span>
               </div>
 
               {/* SPECIFICATIONS EDITOR IN EDIT MODAL */}

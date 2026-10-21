@@ -295,7 +295,13 @@ function StaffMembers() {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/admin/staff/${editStaff.id}/avatar`, {
+      const apiBase =
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'vaultscope.de' ||
+          window.location.hostname.endsWith('.vaultscope.de'))
+          ? '/api'
+          : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const res = await fetch(`${apiBase}/admin/staff/${editStaff.id}/avatar`, {
         method: 'POST',
         body: formData,
         headers: {

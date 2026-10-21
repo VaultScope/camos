@@ -274,7 +274,12 @@ export default function BlogEdit() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('subfolder', 'blog');
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const apiBase =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'vaultscope.de' ||
+        window.location.hostname.endsWith('.vaultscope.de'))
+        ? '/api'
+        : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
     const token = localStorage.getItem('vs_admin_token') || '';
 
     const csrfRes = await fetch(`${apiBase}/csrf`, { credentials: 'include' }).then(r => r.json()).catch(() => ({}));

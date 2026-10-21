@@ -1,6 +1,11 @@
 import type { AuthClaims } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'vaultscope.de' ||
+    window.location.hostname.endsWith('.vaultscope.de'))
+    ? '/api'
+    : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export function getStoredClaims(): AuthClaims | null {
   const raw = localStorage.getItem('vs_admin_claims');
