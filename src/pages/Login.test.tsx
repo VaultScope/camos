@@ -12,7 +12,6 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../lib/auth', () => ({
   isAuthenticated: vi.fn(() => false),
   loginWithCredentials: vi.fn(),
-  devLogin: vi.fn(),
 }));
 
 import { isAuthenticated, loginWithCredentials } from '../lib/auth';

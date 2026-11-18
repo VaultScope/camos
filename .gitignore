@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 .env
 !.env.example
+
+# Local LLM documentation
+local-llm/
+/local-llm

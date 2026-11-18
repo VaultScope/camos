@@ -73,24 +73,6 @@ export async function loginWithCredentials(
   return claims;
 }
 
-export async function devLogin(persona: string = 'admin1'): Promise<AuthClaims> {
-  const res = await fetch(`${API_BASE}/auth/dev-login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ persona }),
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || 'Dev login failed');
-  }
-
-  const { token, claims } = await res.json();
-  localStorage.setItem('vs_admin_token', token);
-  localStorage.setItem('vs_admin_claims', JSON.stringify(claims));
-  return claims;
-}
-
 export function logout() {
   localStorage.removeItem('vs_admin_token');
   localStorage.removeItem('vs_admin_claims');
