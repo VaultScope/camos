@@ -1623,6 +1623,7 @@ function ProductsList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<(ProductFormData & { id: string }) | null>(null);
   const [saving, setSaving] = useState(false);
+  const [syncingRs, setSyncingRs] = useState(false);
 
   const items = products || [];
 
@@ -1647,6 +1648,21 @@ function ProductsList() {
       refetch();
     } catch (e: any) {
       toast.error(e.message || 'Failed to sync stock');
+    }
+  };
+
+  const syncReliableSiteNl = async () => {
+    setSyncingRs(true);
+    try {
+      const res: any = await api.post('/admin/reliablesite/sync', { data_center: 'NL' });
+      toast.success(
+        `Synced ${res?.servers_synced ?? 0} NL servers and ${res?.addons_synced ?? 0} add-ons from ReliableSite`
+      );
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to sync ReliableSite NL inventory');
+    } finally {
+      setSyncingRs(false);
     }
   };
 
@@ -1681,9 +1697,20 @@ function ProductsList() {
     <Page title="Products & Margin Tracking">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Map your retail plans to underlying upstream infrastructure providers.</p>
-        <Link to="/products/new" className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors">
-          <Plus className="w-4 h-4" /> Add Plan
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={syncReliableSiteNl}
+            disabled={syncingRs}
+            className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <Database className="w-4 h-4" />
+            {syncingRs ? 'Syncing NL...' : 'Sync ReliableSite NL'}
+          </button>
+          <Link to="/products/new" className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors">
+            <Plus className="w-4 h-4" /> Add Plan
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6 bg-foreground/[0.02] border border-border p-3">

@@ -18,10 +18,11 @@ describe('Products', () => {
     mockUseApi.mockReturnValue({ data: null, loading: true, error: null, refetch: vi.fn() });
   });
 
-  it('renders page title', async () => {
+  it('renders page title and Sync ReliableSite NL button', async () => {
     const Products = (await import('./Products')).default;
     render(<MemoryRouter><Products /></MemoryRouter>);
     expect(screen.getByText(/Products & Margin Tracking/)).toBeDefined();
+    expect(screen.getByText(/Sync ReliableSite NL/i)).toBeDefined();
   });
 
   it('renders products after load', async () => {
