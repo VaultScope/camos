@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { Plus, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 import { useToast } from '../components/Toast';
 import type { Invoice, Customer } from '../lib/types';
 
@@ -130,11 +130,14 @@ export default function BillingInvoices() {
 
   const handleDownloadPdf = async (invId: string, invoiceNumber: string) => {
     try {
-      const token = localStorage.getItem('vs_admin_token') || localStorage.getItem('vs_token');
-      const res = await fetch(`/api/admin/invoices/${invId}/pdf`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
+      const token = localStorage.getItem('vs_admin_token');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${API_BASE}/admin/invoices/${invId}/pdf`, {
+        headers,
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to download invoice PDF');
       const blob = await res.blob();
@@ -170,7 +173,7 @@ export default function BillingInvoices() {
   const total = subtotal + taxAmount;
 
   return (
-    <Page title="Invoices">
+    <Page title="Invoices" requiredPermission="invoices.view">
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-muted-foreground">Manage and generate customer invoices.</p>
         <button
