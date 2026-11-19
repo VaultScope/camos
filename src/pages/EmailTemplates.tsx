@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Page } from '../components/Layout';
 import { ArrowLeft, Eye, Save, ToggleLeft, ToggleRight, Copy, Send, Mail, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
@@ -143,7 +144,14 @@ export default function EmailTemplatesPage() {
               <div className="text-xs text-muted-foreground uppercase mb-1">Subject</div>
               <div className="text-sm font-medium">{editSubject}</div>
             </div>
-            <div className="p-6 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: editBody }} />
+            <div
+              className="p-6 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(editBody, {
+                  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i,
+                }),
+              }}
+            />
           </div>
         ) : (
           <div className="flex gap-6">

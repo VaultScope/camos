@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -45,5 +45,37 @@ describe('EmailTemplates', () => {
     const EmailTemplates = (await import('./EmailTemplates')).default;
     render(<MemoryRouter><EmailTemplates /></MemoryRouter>);
     expect(screen.getByText('Welcome Email')).toBeDefined();
+  });
+
+  it('sanitizes XSS payloads in template preview mode', async () => {
+    const xssTemplate = {
+      id: 'et-xss',
+      name: 'XSS Template',
+      subject: 'Alert Test',
+      body: '<p>Safe text</p><script>alert(1)</script><img src="x" onerror="alert(1)"><a href="javascript:alert(1)">Bad</a><a href="https://vaultscope.de">Good</a>',
+      category: 'account',
+      enabled: true,
+      variables: [],
+      mailbox_id: null,
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockUseApi.mockImplementation((url: string) => {
+      if (url === '/admin/email-templates') return { data: [xssTemplate], loading: false, error: null, refetch: vi.fn() };
+      return { data: null, loading: false, error: null, refetch: vi.fn() };
+    });
+
+    const EmailTemplates = (await import('./EmailTemplates')).default;
+    const { container } = render(<MemoryRouter><EmailTemplates /></MemoryRouter>);
+
+    fireEvent.click(screen.getByText('XSS Template'));
+    fireEvent.click(screen.getByRole('button', { name: /Preview/i }));
+
+    expect(screen.getByText('Safe text')).toBeDefined();
+    expect(container.querySelector('script')).toBeNull();
+    const img = container.querySelector('img');
+    expect(img?.getAttribute('onerror')).toBeNull();
+    const links = Array.from(container.querySelectorAll('a'));
+    expect(links.some(a => (a.getAttribute('href') || '').toLowerCase().startsWith('javascript:'))).toBe(false);
+    expect(links.some(a => a.getAttribute('href') === 'https://vaultscope.de')).toBe(true);
   });
 });
