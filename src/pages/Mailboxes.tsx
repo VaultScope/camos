@@ -21,14 +21,21 @@ export default function Mailboxes() {
     setTestState('testing');
     setTestError('');
     try {
-      await api.post('/admin/mailboxes/test', {
-        smtp_host: editing.host,
-        smtp_port: editing.port || 587,
-        smtp_user: editing.user_name,
-        smtp_pass: editing.password,
-        email: editing.user_name,
-        test_to: testEmail || editing.user_name,
-      });
+      const enteredPassword = editing.password?.trim() ? editing.password : undefined;
+      if (!isNew && editing.id && !enteredPassword) {
+        await api.post(`/admin/mailboxes/${editing.id}/test`, {
+          send_test_email: testEmail.trim() || undefined,
+        });
+      } else {
+        await api.post('/admin/mailboxes/test', {
+          smtp_host: editing.host,
+          smtp_port: editing.port || 587,
+          smtp_user: editing.user_name,
+          smtp_pass: enteredPassword || '',
+          email: editing.user_name,
+          test_to: testEmail || editing.user_name,
+        });
+      }
       setTestState('success');
     } catch (e: any) {
       setTestState('error');
@@ -43,7 +50,12 @@ export default function Mailboxes() {
       if (isNew) {
         await api.post('/admin/mailboxes', editing);
       } else {
-        await api.put(`/admin/mailboxes/${editing.id}`, editing);
+        const { password, password_configured: _pc, ...rest } = editing;
+        const payload: Partial<Mailbox> = { ...rest };
+        if (password && password.trim()) {
+          payload.password = password;
+        }
+        await api.put(`/admin/mailboxes/${editing.id}`, payload);
       }
       refetch();
       setEditing(null);
@@ -114,7 +126,14 @@ export default function Mailboxes() {
 
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Password</label>
-              <input type="password" value={editing.password || ''} onChange={e => updateField('password', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+              <input
+                type="password"
+                value={editing.password || ''}
+                onChange={e => updateField('password', e.target.value)}
+                placeholder={isNew ? 'Enter SMTP password' : 'Leave blank to keep existing password'}
+                autoComplete="new-password"
+                className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+              />
             </div>
 
             {/* Test Connection */}
@@ -172,7 +191,7 @@ export default function Mailboxes() {
     <Page title="Mailboxes" requiredPermission="mail.manage">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Manage your inbound and outbound mailboxes for tickets and system emails.</p>
-        <button onClick={() => setEditing({ port: 587 })} className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer">
+        <button onClick={() => { setEditing({ port: 587, password: '' }); setTestState('idle'); setTestError(''); setTestEmail(''); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer">
           <Plus className="w-4 h-4" /> Add Mailbox
         </button>
       </div>
@@ -200,7 +219,17 @@ export default function Mailboxes() {
                       <Star className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => setEditing(mb)} className="p-2 text-muted-foreground hover:text-foreground cursor-pointer" title="Edit">
+                  <button
+                    onClick={() => {
+                      const { password: _ignoredPassword, ...safeMailbox } = mb;
+                      setEditing({ ...safeMailbox, password: '' });
+                      setTestState('idle');
+                      setTestError('');
+                      setTestEmail('');
+                    }}
+                    className="p-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Edit"
+                  >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(mb.id)} className="p-2 text-muted-foreground hover:text-red-500 cursor-pointer" title="Delete">

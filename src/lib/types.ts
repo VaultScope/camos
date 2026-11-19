@@ -268,7 +268,8 @@ export interface Mailbox {
   host: string;
   port: number;
   user_name: string;
-  password: string;
+  password?: string;
+  password_configured?: boolean;
   is_default: boolean;
   created_at: string;
 }

@@ -2,11 +2,38 @@ import { useState, useEffect } from 'react';
 import { Page } from '../components/Layout';
 import { Save, Send } from 'lucide-react';
 import { api } from '../lib/api';
+import { useToast } from '../components/Toast';
 import type { Setting } from '../lib/types';
+
+const SECRET_SETTING_KEYS = [
+  'smtpPass',
+  'oidcClientSecret',
+  'stripe_live_secret_key',
+  'stripe_webhook_secret',
+  'stripe_sandbox_secret_key',
+] as const;
+
+type SecretSettingKey = (typeof SECRET_SETTING_KEYS)[number];
+
+function isSecretSettingKey(key: string): key is SecretSettingKey {
+  return (SECRET_SETTING_KEYS as readonly string[]).includes(key);
+}
+
+function isMaskedSecretPlaceholder(value: unknown): boolean {
+  if (typeof value !== 'string') return true;
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (/^[•*]+$/.test(trimmed)) return true;
+  if (trimmed.includes('••••') || trimmed === '__CONFIGURED__') return true;
+  return false;
+}
 
 export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [configuredSecrets, setConfiguredSecrets] = useState<Record<string, boolean>>({});
+  const [dirtySecrets, setDirtySecrets] = useState<Record<string, boolean>>({});
+  const toast = useToast();
   const [settings, setSettings] = useState({
     companyName: '',
     legalName: '',
@@ -78,7 +105,33 @@ export default function Settings() {
   useEffect(() => {
     api.get<Setting[]>('/admin/settings').then((data) => {
       const mapped: Record<string, any> = {};
-      data.forEach((s) => { mapped[s.key] = s.value; });
+      const configured: Record<string, boolean> = {};
+      data.forEach((s) => {
+        if (s.key.endsWith('_configured')) {
+          const baseKey = s.key.slice(0, -'_configured'.length);
+          if (isSecretSettingKey(baseKey)) {
+            configured[baseKey] = Boolean(s.value);
+          }
+          return;
+        }
+        if (isSecretSettingKey(s.key)) {
+          if (typeof s.value === 'boolean') {
+            configured[s.key] = s.value;
+          } else if (s.value && typeof s.value === 'object' && 'configured' in (s.value as Record<string, unknown>)) {
+            configured[s.key] = Boolean((s.value as Record<string, unknown>).configured);
+          } else if (typeof s.value === 'string' && s.value.trim().length > 0) {
+            configured[s.key] = true;
+          } else {
+            configured[s.key] = false;
+          }
+          // Never populate plaintext or masked secret placeholders into controlled input state
+          mapped[s.key] = '';
+          return;
+        }
+        mapped[s.key] = s.value;
+      });
+      setConfiguredSecrets(configured);
+      setDirtySecrets({});
       setSettings((prev) => ({ ...prev, ...mapped }));
       setLoading(false);
     }).catch(() => {
@@ -87,14 +140,56 @@ export default function Settings() {
   }, []);
 
   const handleSave = () => {
-    const entries = Object.entries(settings).map(([key, value]) => ({ key, value }));
+    const updatedSecretKeys: string[] = [];
+    const entries = Object.entries(settings)
+      .filter(([key, value]) => {
+        if (key.endsWith('_configured')) return false;
+        if (isSecretSettingKey(key)) {
+          const shouldSend =
+            Boolean(dirtySecrets[key]) &&
+            typeof value === 'string' &&
+            value.trim().length > 0 &&
+            !isMaskedSecretPlaceholder(value);
+          if (shouldSend) updatedSecretKeys.push(key);
+          return shouldSend;
+        }
+        return true;
+      })
+      .map(([key, value]) => ({ key, value }));
+
     api.put('/admin/settings', entries)
-      .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); })
-      .catch(() => {});
+      .then(() => {
+        setSaved(true);
+        if (updatedSecretKeys.length > 0) {
+          setConfiguredSecrets((prev) => {
+            const next = { ...prev };
+            updatedSecretKeys.forEach((k) => { next[k] = true; });
+            return next;
+          });
+          setSettings((prev) => {
+            const next = { ...prev };
+            updatedSecretKeys.forEach((k) => {
+              (next as Record<string, unknown>)[k] = '';
+            });
+            return next;
+          });
+          setDirtySecrets({});
+        }
+        setTimeout(() => setSaved(false), 2000);
+      })
+      .catch((err: any) => {
+        toast.error(err?.message || 'Failed to save settings');
+      });
   };
 
   const update = (key: string, value: any) => {
     setSettings({ ...settings, [key]: value });
+    if (isSecretSettingKey(key)) {
+      setDirtySecrets((prev) => ({
+        ...prev,
+        [key]: typeof value === 'string' && value.trim().length > 0 && !isMaskedSecretPlaceholder(value),
+      }));
+    }
   };
 
   if (loading) {
@@ -274,7 +369,14 @@ export default function Settings() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Client Secret</label>
-                  <input type="password" value={settings.oidcClientSecret} onChange={e => update('oidcClientSecret', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <input
+                    type="password"
+                    value={settings.oidcClientSecret}
+                    onChange={e => update('oidcClientSecret', e.target.value)}
+                    placeholder={configuredSecrets.oidcClientSecret ? 'Configured — enter new secret to replace' : 'Enter OIDC client secret'}
+                    autoComplete="new-password"
+                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                  />
                 </div>
               </div>
             </div>
@@ -299,7 +401,14 @@ export default function Settings() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Password</label>
-                  <input type="password" value={settings.smtpPass} onChange={e => update('smtpPass', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <input
+                    type="password"
+                    value={settings.smtpPass}
+                    onChange={e => update('smtpPass', e.target.value)}
+                    placeholder={configuredSecrets.smtpPass ? 'Configured — enter new password to replace' : 'Enter SMTP password'}
+                    autoComplete="new-password"
+                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
