@@ -3,7 +3,8 @@ import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { ArrowLeft, Send, Plus, Server, ExternalLink, Paperclip, X, Image as ImageIcon } from 'lucide-react';
 import { useApi } from '../lib/hooks';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
+import { sanitizeSafeUrl } from '../lib/url';
 import { useToast } from '../components/Toast';
 import type { Ticket, TicketMessage, Department, Customer, Staff, Service, TicketAttachment } from '../lib/types';
 
@@ -85,7 +86,7 @@ function TicketsDepartments() {
   };
 
   return (
-    <Page title="Support Departments">
+    <Page title="Support Departments" requiredPermission="tickets.manage">
       <div className="flex justify-between items-center mb-6">
         <p className="text-sm text-muted-foreground">Manage ticket departments and their associated email pipelines.</p>
         <button onClick={() => handleOpenModal()} className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors cursor-pointer">
@@ -209,7 +210,7 @@ function TicketsList() {
   ];
 
   return (
-    <Page title="Support Tickets">
+    <Page title="Support Tickets" requiredPermission="tickets.view">
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-3 flex-1 max-w-lg">
           <input
@@ -317,11 +318,12 @@ function TicketsList() {
   );
 }
 
+const ALLOWED_ATTACHMENT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+
 function TicketDetail() {
   const { id } = useParams();
   const { data: ticket, loading, error, refetch } = useApi<Ticket>(`/admin/tickets/${id}`);
   const { data: messages, refetch: refetchMessages } = useApi<TicketMessage[]>(`/admin/tickets/${id}/messages`);
-  const { data: staff } = useApi<Staff>('/admin/staff/me');
   const { data: customerServices } = useApi<Service[]>(ticket?.customer_id ? `/admin/services?customer_id=${ticket.customer_id}` : null);
   const toast = useToast();
   const [replyText, setReplyText] = useState('');
@@ -354,42 +356,50 @@ function TicketDetail() {
     }
   }, [messages]);
 
-  // Connect to SSE for real-time ticket replies
+  // Connect to SSE using short-lived single-use ticket (never pass Bearer JWT in query string)
   useEffect(() => {
     if (!id || typeof window === 'undefined' || typeof window.EventSource === 'undefined') return;
 
-    const token = localStorage.getItem('vs_admin_token') || '';
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const eventSourceUrl = `${apiBase}/admin/tickets/${id}/events${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    let cancelled = false;
     let es: EventSource | null = null;
 
-    try {
-      es = new window.EventSource(eventSourceUrl, { withCredentials: true });
+    const connectSse = async () => {
+      try {
+        const res = await api.post<{ ticket: string }>('/auth/sse-ticket', {});
+        const ticket = res?.ticket;
+        if (cancelled || !ticket) return;
 
-      es.onopen = () => {
-        setIsLive(true);
-      };
+        const eventSourceUrl = `${API_BASE}/admin/tickets/${id}/events?ticket=${encodeURIComponent(ticket)}`;
+        es = new window.EventSource(eventSourceUrl, { withCredentials: true });
 
-      es.addEventListener('message', (event) => {
-        try {
-          const newMsg: TicketMessage = JSON.parse(event.data);
-          setLiveMessages(prev => {
-            if (prev.some(m => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
-          refetchRef.current();
-        } catch (err) {
-          console.error('Failed to parse admin SSE message:', err);
-          refetchMessagesRef.current();
-        }
-      });
+        es.onopen = () => {
+          if (!cancelled) setIsLive(true);
+        };
 
-      es.onerror = () => {
-        setIsLive(false);
-      };
-    } catch (e) {
-      console.warn('Failed to initialize Admin EventSource:', e);
-    }
+        es.addEventListener('message', (event) => {
+          try {
+            const newMsg: TicketMessage = JSON.parse(event.data);
+            setLiveMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            refetchRef.current();
+          } catch (err) {
+            console.error('Failed to parse admin SSE message:', err);
+            refetchMessagesRef.current();
+          }
+        });
+
+        es.onerror = () => {
+          if (!cancelled) setIsLive(false);
+        };
+      } catch (e) {
+        console.warn('Failed to initialize Admin EventSource:', e);
+        if (!cancelled) setIsLive(false);
+      }
+    };
+
+    connectSse();
 
     // Polling fallback every 3s to guarantee seamless live updates across all network conditions
     const pollInterval = setInterval(() => {
@@ -397,6 +407,7 @@ function TicketDetail() {
     }, 3000);
 
     return () => {
+      cancelled = true;
       es?.close();
       clearInterval(pollInterval);
     };
@@ -410,9 +421,9 @@ function TicketDetail() {
     const validFiles: File[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      // 1. Image validation
-      if (!file.type.startsWith('image/')) {
-        setUploadError(`"${file.name}" is not an image. Only PNG, JPEG, WebP, and GIF images are permitted.`);
+      // 1. Strict MIME allowlist (excludes SVG and arbitrary image/* types)
+      if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type as (typeof ALLOWED_ATTACHMENT_MIME_TYPES)[number])) {
+        setUploadError(`"${file.name}" is not a permitted image. Only PNG, JPEG, and WebP images are permitted.`);
         continue;
       }
       // 2. 10MB size limit
@@ -430,33 +441,10 @@ function TicketDetail() {
 
     setUploading(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-      const token = localStorage.getItem('vs_admin_token') || '';
-
       for (const file of validFiles) {
         const formData = new FormData();
         formData.append('file', file);
-
-        const csrfRes = await fetch(`${apiBase}/csrf`, { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
-        const csrfToken = csrfRes?.token || '';
-
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        if (csrfToken) headers['x-csrf-token'] = csrfToken;
-
-        const res = await fetch(`${apiBase}/admin/tickets/${id}/attachments`, {
-          method: 'POST',
-          headers,
-          body: formData,
-          credentials: 'include',
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Upload failed (${res.status})`);
-        }
-
-        const uploaded: TicketAttachment = await res.json();
+        const uploaded = await api.post<TicketAttachment>(`/admin/tickets/${id}/attachments`, formData);
         setAttachments(prev => [...prev, uploaded]);
       }
     } catch (err: any) {
@@ -472,19 +460,10 @@ function TicketDetail() {
   };
 
   const handleSendReply = async () => {
-    let authorId = staff?.id;
-    if (!authorId) {
-      const stored = localStorage.getItem('vs_admin_claims');
-      if (stored) {
-        try { authorId = JSON.parse(stored).sub; } catch {}
-      }
-    }
-    if ((!replyText.trim() && attachments.length === 0) || !authorId || sending || uploading) return;
+    if ((!replyText.trim() && attachments.length === 0) || sending || uploading) return;
     setSending(true);
     try {
       const newMsg = await api.post<TicketMessage>(`/admin/tickets/${id}/messages`, {
-        author_id: authorId,
-        author_type: 'staff',
         content: replyText.trim() || 'Attached image(s)',
         internal: isInternal,
         attachments: attachments,
@@ -505,12 +484,12 @@ function TicketDetail() {
   };
 
   if (loading) {
-    return <Page title="Ticket"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
+    return <Page title="Ticket" requiredPermission="tickets.view"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
   }
 
   if (error || !ticket) {
     return (
-      <Page title="Ticket Not Found">
+      <Page title="Ticket Not Found" requiredPermission="tickets.view">
         <p className="text-sm text-muted-foreground">{error || 'Ticket not found.'}</p>
         <Link to="/tickets" className="text-sm text-foreground hover:underline mt-2 inline-block">Back to tickets</Link>
       </Page>
@@ -521,7 +500,7 @@ function TicketDetail() {
   const linkedSvc = customerServices?.find(s => s.id === ticket.related_service_id);
 
   return (
-    <Page title="Ticket Detail">
+    <Page title="Ticket Detail" requiredPermission="tickets.view">
       <Link to="/tickets" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="w-4 h-4" /> All Tickets
       </Link>
@@ -673,26 +652,42 @@ function TicketDetail() {
               {/* Inline Attachments */}
               {msg.attachments && msg.attachments.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2.5">
-                  {msg.attachments.map(att => (
-                    <a
-                      key={att.id}
-                      href={att.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative block overflow-hidden border border-border bg-foreground/[0.03] rounded hover:border-foreground/40 transition-colors"
-                      title={`${att.filename} (${(att.size / 1024).toFixed(0)} KB)`}
-                    >
-                      <img
-                        src={att.url}
-                        alt={att.filename}
-                        className="h-28 w-28 object-cover rounded transition-transform group-hover:scale-105"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-xs px-1.5 py-0.5 text-[10px] truncate text-muted-foreground group-hover:text-foreground">
-                        {att.filename}
-                      </div>
-                    </a>
-                  ))}
+                  {msg.attachments.map(att => {
+                    const safeUrl = sanitizeSafeUrl(att.url);
+                    if (!safeUrl) {
+                      return (
+                        <div
+                          key={att.id}
+                          className="flex items-center gap-2 border border-border bg-foreground/[0.03] rounded px-2.5 py-2 text-xs text-muted-foreground opacity-60 cursor-not-allowed"
+                          title="Blocked unsafe attachment URL"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span className="max-w-[140px] truncate">{att.filename}</span>
+                          <span className="text-[10px] font-mono uppercase">(Blocked)</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <a
+                        key={att.id}
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative block overflow-hidden border border-border bg-foreground/[0.03] rounded hover:border-foreground/40 transition-colors"
+                        title={`${att.filename} (${(att.size / 1024).toFixed(0)} KB)`}
+                      >
+                        <img
+                          src={safeUrl}
+                          alt={att.filename}
+                          className="h-28 w-28 object-cover rounded transition-transform group-hover:scale-105"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-xs px-1.5 py-0.5 text-[10px] truncate text-muted-foreground group-hover:text-foreground">
+                          {att.filename}
+                        </div>
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -703,7 +698,7 @@ function TicketDetail() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp"
             multiple
             className="hidden"
             onChange={handleFileSelect}
@@ -836,10 +831,7 @@ function TicketsNew() {
       const ticket = await api.post<Ticket>('/admin/tickets', payload);
 
       if (firstMessage.trim()) {
-        const currentUser = await api.get<{staff: Staff, role_name: string}>('/admin/staff/me');
         await api.post(`/admin/tickets/${ticket.id}/messages`, {
-          author_id: currentUser.staff.id,
-          author_type: 'staff',
           content: firstMessage.trim(),
           internal: false,
         });
@@ -853,7 +845,7 @@ function TicketsNew() {
   };
 
   return (
-    <Page title="Create Ticket">
+    <Page title="Create Ticket" requiredPermission="tickets.reply">
       <Link to="/tickets" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="w-4 h-4" /> All Tickets
       </Link>

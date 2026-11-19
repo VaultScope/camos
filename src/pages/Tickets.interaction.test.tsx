@@ -6,6 +6,7 @@ import { mockTicket, mockStaff, mockCustomer } from '../test/utils';
 
 vi.mock('../lib/hooks', () => ({ useApi: vi.fn() }));
 vi.mock('../lib/api', () => ({
+  API_BASE: 'http://localhost:3000/api',
   api: {
     get: vi.fn().mockResolvedValue({}),
     post: vi.fn().mockResolvedValue({ id: 'new-tkt' }),
