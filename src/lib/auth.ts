@@ -1,19 +1,16 @@
 import type { AuthClaims } from './types';
-
-const API_BASE =
-  typeof window !== 'undefined' &&
-  (window.location.hostname === 'vaultscope.de' ||
-    window.location.hostname.endsWith('.vaultscope.de'))
-    ? '/api'
-    : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { API_BASE } from './api';
 
 export function getStoredClaims(): AuthClaims | null {
   const raw = localStorage.getItem('vs_admin_claims');
   if (!raw) return null;
   try {
     const claims: AuthClaims = JSON.parse(raw);
-    if (claims.exp * 1000 < Date.now()) {
+    if (!claims || typeof claims.exp !== 'number' || claims.exp * 1000 < Date.now()) {
       logout();
+      return null;
+    }
+    if (claims.audience !== 'admin') {
       return null;
     }
     return claims;
@@ -23,10 +20,14 @@ export function getStoredClaims(): AuthClaims | null {
 }
 
 export function isAuthenticated(): boolean {
-  return getStoredClaims() !== null;
+  const token = localStorage.getItem('vs_admin_token');
+  if (!token || !token.trim()) return false;
+  const claims = getStoredClaims();
+  return claims !== null && claims.audience === 'admin';
 }
 
 export function hasPermission(permission: string): boolean {
+  if (!isAuthenticated()) return false;
   const claims = getStoredClaims();
   if (!claims) return false;
   const permissions: string[] = claims.permissions || [];
@@ -52,6 +53,7 @@ export async function loginWithCredentials(
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
@@ -68,12 +70,32 @@ export async function loginWithCredentials(
   }
 
   const { token, claims } = data;
+  if (!token || !claims || claims.audience !== 'admin') {
+    throw new Error('Invalid admin session response');
+  }
   localStorage.setItem('vs_admin_token', token);
   localStorage.setItem('vs_admin_claims', JSON.stringify(claims));
   return claims;
 }
 
 export function logout() {
+  const token = localStorage.getItem('vs_admin_token');
+  if (token) {
+    try {
+      void Promise.resolve(
+        fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: 'include',
+          keepalive: true,
+        })
+      ).catch(() => {});
+    } catch {
+      // Best-effort revocation must never block local logout
+    }
+  }
   localStorage.removeItem('vs_admin_token');
   localStorage.removeItem('vs_admin_claims');
   window.location.href = '/login';

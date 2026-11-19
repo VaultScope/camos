@@ -18,6 +18,12 @@ const staffClaims: AuthClaims = {
   permissions: ['tickets.view', 'tickets.manage', 'customers.view'],
 };
 
+const storefrontClaims: AuthClaims = {
+  ...validClaims,
+  role: 'Customer',
+  audience: 'storefront',
+};
+
 const expiredClaims: AuthClaims = {
   ...validClaims,
   exp: Math.floor(Date.now() / 1000) - 3600,
@@ -26,6 +32,7 @@ const expiredClaims: AuthClaims = {
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  vi.restoreAllMocks();
 });
 
 describe('getStoredClaims', () => {
@@ -58,8 +65,20 @@ describe('isAuthenticated', () => {
     expect(isAuthenticated()).toBe(false);
   });
 
-  it('returns true with valid claims', () => {
+  it('returns false when vs_admin_token is missing even if claims exist', () => {
     localStorage.setItem('vs_admin_claims', JSON.stringify(validClaims));
+    expect(isAuthenticated()).toBe(false);
+  });
+
+  it('returns false when audience is not admin', () => {
+    localStorage.setItem('vs_admin_claims', JSON.stringify(storefrontClaims));
+    localStorage.setItem('vs_admin_token', 'storefront-jwt');
+    expect(isAuthenticated()).toBe(false);
+  });
+
+  it('returns true with valid admin claims and token', () => {
+    localStorage.setItem('vs_admin_claims', JSON.stringify(validClaims));
+    localStorage.setItem('vs_admin_token', 'admin-jwt');
     expect(isAuthenticated()).toBe(true);
   });
 });
@@ -69,19 +88,27 @@ describe('hasPermission', () => {
     expect(hasPermission('tickets.view')).toBe(false);
   });
 
+  it('returns false when token is missing', () => {
+    localStorage.setItem('vs_admin_claims', JSON.stringify(validClaims));
+    expect(hasPermission('tickets.view')).toBe(false);
+  });
+
   it('returns true for Owner role (wildcard)', () => {
     localStorage.setItem('vs_admin_claims', JSON.stringify(validClaims));
+    localStorage.setItem('vs_admin_token', 'admin-jwt');
     expect(hasPermission('anything.here')).toBe(true);
   });
 
   it('returns true for matching permission', () => {
     localStorage.setItem('vs_admin_claims', JSON.stringify(staffClaims));
+    localStorage.setItem('vs_admin_token', 'admin-jwt');
     expect(hasPermission('tickets.view')).toBe(true);
     expect(hasPermission('tickets.manage')).toBe(true);
   });
 
   it('returns false for non-matching permission', () => {
     localStorage.setItem('vs_admin_claims', JSON.stringify(staffClaims));
+    localStorage.setItem('vs_admin_token', 'admin-jwt');
     expect(hasPermission('products.edit')).toBe(false);
     expect(hasPermission('staff.manage')).toBe(false);
   });
@@ -100,10 +127,20 @@ describe('getToken', () => {
 });
 
 describe('logout', () => {
-  it('clears admin tokens from storage', () => {
-    localStorage.setItem('vs_admin_token', 'token');
+  it('fires best-effort POST /auth/logout with Bearer token and clears admin tokens from storage', () => {
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
+    global.fetch = fetchSpy;
+    localStorage.setItem('vs_admin_token', 'admin-logout-jwt');
     localStorage.setItem('vs_admin_claims', JSON.stringify(validClaims));
     logout();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/logout'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Authorization: 'Bearer admin-logout-jwt' },
+        credentials: 'include',
+      })
+    );
     expect(localStorage.getItem('vs_admin_token')).toBeNull();
     expect(localStorage.getItem('vs_admin_claims')).toBeNull();
   });
