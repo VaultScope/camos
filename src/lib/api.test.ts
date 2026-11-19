@@ -90,6 +90,24 @@ describe('ApiClient (CAMOS)', () => {
       expect(deleteCall[1].headers['x-csrf-token']).toBe('csrf-cached');
     });
 
+    it('rejects mutation without hardcoded vs-csrf-admin fallback when /csrf fails', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('CSRF network failure'));
+
+      await expect(api.post('/admin/services', { name: 'test' })).rejects.toThrow('CSRF network failure');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][0]).toContain('/csrf');
+    });
+
+    it('rejects mutation without hardcoded vs-csrf-admin fallback when /csrf returns empty token', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      await expect(api.post('/admin/services', { name: 'test' })).rejects.toThrow(/CSRF/i);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     it('PUT sends body with CSRF', async () => {
       mockFetch
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ token: 'csrf-put' }) })

@@ -5,7 +5,12 @@ function resolveApiBase(): string {
       return '/api';
     }
   }
-  return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  return import.meta.env.DEV || import.meta.env.MODE === 'test'
+    ? 'http://localhost:3000/api'
+    : '/api';
 }
 
 export const API_BASE = resolveApiBase();
@@ -27,15 +32,21 @@ class ApiClient {
   private async fetchCsrfToken() {
     if (this.csrfPromise) return this.csrfPromise;
     this.csrfPromise = fetch(`${API_BASE}/csrf`, { credentials: 'include' })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch CSRF token (${res.status})`);
+        }
+        return res.json();
+      })
       .then((data) => {
-        this.csrfToken = data?.token || 'vs-csrf-admin';
+        if (!data?.token || typeof data.token !== 'string') {
+          throw new Error('CSRF endpoint did not return a valid token');
+        }
+        this.csrfToken = data.token;
       })
       .catch((err) => {
-        console.error(err);
-        if (!this.csrfToken) {
-          this.csrfToken = 'vs-csrf-admin';
-        }
+        this.csrfToken = null;
+        throw err instanceof Error ? err : new Error('Failed to fetch CSRF token');
       })
       .finally(() => {
         this.csrfPromise = null;
