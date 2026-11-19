@@ -14,9 +14,37 @@ import {
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
   Link as LinkIcon, Heading2, Heading3, AlignLeft, AlignCenter,
   AlignRight, Quote, Code, List, ListOrdered, Table as TableIcon,
-  Paperclip, Undo, Redo
+  Undo, Redo
 } from 'lucide-react'
 import { useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { isAllowedWysiwygLinkUri } from '../lib/url'
+
+function ToolbarButton({
+  onClick,
+  isActive = false,
+  disabled = false,
+  children,
+  title,
+}: {
+  onClick: () => void
+  isActive?: boolean
+  disabled?: boolean
+  children: ReactNode
+  title: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      type="button"
+      className={`p-1.5 rounded cursor-pointer flex items-center justify-center ${isActive ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {children}
+    </button>
+  )
+}
 
 export const WysiwygEditor = ({ content, onChange }: { content: string, onChange: (content: string) => void }) => {
   const editor = useEditor({
@@ -25,7 +53,20 @@ export const WysiwygEditor = ({ content, onChange }: { content: string, onChange
       Underline,
       Subscript,
       Superscript,
-      Link.configure({ openOnClick: false }),
+      Link.configure({
+        openOnClick: false,
+        protocols: ['http', 'https', 'mailto'],
+        defaultProtocol: 'https',
+        isAllowedUri: (url) => isAllowedWysiwygLinkUri(url),
+        shouldAutoLink: (url) => {
+          const trimmed = url.trim()
+          if (!trimmed || trimmed.startsWith('//')) return false
+          if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+            return /^(?:https?|mailto):/i.test(trimmed)
+          }
+          return true
+        },
+      }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Table.configure({ resizable: true }),
       TableRow,
@@ -53,27 +94,19 @@ export const WysiwygEditor = ({ content, onChange }: { content: string, onChange
     return null
   }
 
-  const ToolbarButton = ({ onClick, isActive = false, disabled = false, children, title }: any) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      type="button"
-      className={`p-1.5 rounded cursor-pointer flex items-center justify-center ${isActive ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      {children}
-    </button>
-  )
-
   const setLink = () => {
     const previousUrl = editor.getAttributes('link').href
-    const url = window.prompt('URL', previousUrl)
+    const url = window.prompt('URL (https://, http://, or mailto:)', previousUrl || 'https://')
     if (url === null) return
-    if (url === '') {
+    const trimmed = url.trim()
+    if (trimmed === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
       return
     }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    if (!isAllowedWysiwygLinkUri(trimmed)) {
+      return
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: trimmed }).run()
   }
 
   return (
@@ -135,10 +168,6 @@ export const WysiwygEditor = ({ content, onChange }: { content: string, onChange
         <div className="w-px h-4 bg-border mx-1" />
         <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Table">
           <TableIcon className="w-4 h-4" />
-        </ToolbarButton>
-        <div className="w-px h-4 bg-border mx-1" />
-        <ToolbarButton onClick={() => alert('Mock file attachment')} title="Attach Files">
-          <Paperclip className="w-4 h-4" />
         </ToolbarButton>
         <div className="flex-1" />
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">
