@@ -30,7 +30,7 @@ export default function ActivityLogPage() {
   });
 
   return (
-    <Page title="Activity Log">
+    <Page title="Activity Log" requiredPermission="activity.view">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Chronological record of all staff and system actions.</p>
       </div>

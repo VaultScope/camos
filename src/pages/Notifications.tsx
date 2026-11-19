@@ -39,7 +39,7 @@ export default function NotificationsPage() {
   });
 
   return (
-    <Page title="Notifications">
+    <Page title="Notifications" requiredPermission="notifications.view">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">
           {unresolvedCount > 0

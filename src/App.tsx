@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Layout';
 import { AuthGuard } from './components/AuthGuard';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -64,6 +64,7 @@ export default function App() {
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/email-templates" element={<EmailTemplates />} />
                     <Route path="/internal-tools" element={<InternalTools />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </main>
                   </div>

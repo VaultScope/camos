@@ -91,7 +91,7 @@ export default function ServiceForms() {
   };
 
   return (
-    <Page title="Service Forms & Variables">
+    <Page title="Service Forms & Variables" requiredPermission="forms.manage">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Build custom forms and configuration options shown to customers during checkout.</p>
         <button 

@@ -112,7 +112,7 @@ export default function CouponsPage() {
   };
 
   return (
-    <Page title="Coupons">
+    <Page title="Coupons" requiredPermission="coupons.manage">
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-muted-foreground">Manage discount codes and promotional offers.</p>
         <button

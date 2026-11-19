@@ -24,7 +24,7 @@ function ServicesList() {
   });
 
   return (
-    <Page title="Manage Services (Active Infrastructure)">
+    <Page title="Manage Services (Active Infrastructure)" requiredPermission="services.view">
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-3 flex-1 max-w-lg">
           <input

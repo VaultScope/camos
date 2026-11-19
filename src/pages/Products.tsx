@@ -938,7 +938,7 @@ function ProductsInsights() {
   const items = products || [];
 
   return (
-    <Page title="Product Insights">
+    <Page title="Product Insights" requiredPermission="products.view">
       <div className="grid md:grid-cols-3 gap-6 mb-8">
         <div className="border border-border p-5 bg-background">
           <h3 className="text-sm font-medium mb-4 flex items-center gap-2 text-muted-foreground">
@@ -1108,7 +1108,7 @@ function ProductsNew() {
   };
 
   return (
-    <Page title="Add New Retail Plan">
+    <Page title="Add New Retail Plan" requiredPermission="products.create">
       <div className="bg-background border border-border w-full max-w-2xl">
         {/* Step Indicator Header */}
         <div className="flex border-b border-border">
@@ -1694,7 +1694,7 @@ function ProductsList() {
   };
 
   return (
-    <Page title="Products & Margin Tracking">
+    <Page title="Products & Margin Tracking" requiredPermission="products.view">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Map your retail plans to underlying upstream infrastructure providers.</p>
         <div className="flex items-center gap-3">

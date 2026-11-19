@@ -74,10 +74,10 @@ export default function ServiceNew() {
     }
   };
 
-  if (loading) return <Page title="New Service"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
+  if (loading) return <Page title="New Service" requiredPermission="services.manage"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
 
   return (
-    <Page title="Manual Service Provisioning">
+    <Page title="Manual Service Provisioning" requiredPermission="services.manage">
       <div className="max-w-xl">
         <p className="text-xs text-muted-foreground mb-6">Bypass the standard checkout flow to manually deploy a service for a customer.</p>
         

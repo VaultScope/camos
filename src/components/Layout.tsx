@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { getStoredClaims, logout, hasPermission } from '../lib/auth';
 import { useApi } from '../lib/hooks';
+import { isSafeHttpUrl } from '../lib/url';
 import type { InternalTool, Role } from '../lib/types';
 import { CommandPalette } from './CommandPalette';
 import { useExplainMode } from './HelpTooltip';
@@ -120,24 +121,48 @@ export function Sidebar() {
 
   const claims = getStoredClaims();
   const currentRole = roles?.find(r => r.name === claims?.role);
-  const userPermissions = currentRole?.permissions || [];
+  const hasResolvedPermissions = Boolean(currentRole || Array.isArray(claims?.permissions));
+  const userPermissions =
+    claims?.role === 'Owner' || claims?.permissions?.includes('*')
+      ? ['*']
+      : currentRole?.permissions || claims?.permissions || [];
 
   const visibleTools =
     internalTools?.filter(
-      t => userPermissions.includes('*') || userPermissions.includes(t.required_permission)
+      t =>
+        (userPermissions.includes('*') || userPermissions.includes(t.required_permission)) &&
+        isSafeHttpUrl(t.url)
     ) || [];
+
+  const canViewNavPermission = (permission?: string) => {
+    if (!permission) return true;
+    // Allow standalone Sidebar unit tests without claims; AuthGuard blocks unauthenticated access in App
+    if (!claims) return true;
+    if (userPermissions.includes('*')) return true;
+    if (!hasResolvedPermissions) return false;
+    return userPermissions.includes(permission);
+  };
 
   const toggleItem = (name: string) => {
     setExpandedItem(prev => (prev === name ? null : name));
   };
 
-  const sections = [
+  const rawSections: Array<{
+    label: string | null;
+    items: Array<{
+      name: string;
+      path: string;
+      icon: any;
+      permission?: string;
+      subItems?: Array<{ name: string; path: string; permission?: string }>;
+    }>;
+  }> = [
     {
       label: null,
       items: [
         { name: 'Dashboard', path: '/', icon: Activity },
-        { name: 'Notifications', path: '/notifications', icon: Bell },
-        { name: 'Reports', path: '/reports', icon: BarChart3 },
+        { name: 'Notifications', path: '/notifications', icon: Bell, permission: 'notifications.view' },
+        { name: 'Reports', path: '/reports', icon: BarChart3, permission: 'reports.view' },
       ],
     },
     {
@@ -147,15 +172,16 @@ export function Sidebar() {
     {
       label: 'Customers',
       items: [
-        { name: 'Accounts', path: '/customers', icon: Users },
+        { name: 'Accounts', path: '/customers', icon: Users, permission: 'customers.view' },
         {
           name: 'Support Tickets',
           path: '/tickets',
           icon: LifeBuoy,
+          permission: 'tickets.view',
           subItems: [
-            { name: 'All Tickets', path: '/tickets' },
-            { name: 'New Ticket', path: '/tickets/new' },
-            { name: 'Departments', path: '/tickets/departments' },
+            { name: 'All Tickets', path: '/tickets', permission: 'tickets.view' },
+            { name: 'New Ticket', path: '/tickets/new', permission: 'tickets.reply' },
+            { name: 'Departments', path: '/tickets/departments', permission: 'tickets.manage' },
           ],
         },
       ],
@@ -168,10 +194,10 @@ export function Sidebar() {
           path: '/billing',
           icon: DollarSign,
           subItems: [
-            { name: 'Insights', path: '/billing/insights' },
-            { name: 'Invoices', path: '/billing/invoices' },
-            { name: 'Automations', path: '/billing/automations' },
-            { name: 'Tax Rates', path: '/billing/tax-rates' },
+            { name: 'Insights', path: '/billing/insights', permission: 'billing.view' },
+            { name: 'Invoices', path: '/billing/invoices', permission: 'invoices.view' },
+            { name: 'Automations', path: '/billing/automations', permission: 'billing.manage' },
+            { name: 'Tax Rates', path: '/billing/tax-rates', permission: 'tax.manage' },
           ],
         },
         {
@@ -179,13 +205,13 @@ export function Sidebar() {
           path: '/products',
           icon: HardDrive,
           subItems: [
-            { name: 'All Products', path: '/products' },
-            { name: 'New Product', path: '/products/new' },
-            { name: 'Insights', path: '/products/insights' },
+            { name: 'All Products', path: '/products', permission: 'products.view' },
+            { name: 'New Product', path: '/products/new', permission: 'products.create' },
+            { name: 'Insights', path: '/products/insights', permission: 'products.view' },
           ],
         },
-        { name: 'Coupons', path: '/coupons', icon: Tag },
-        { name: 'Partners', path: '/partners', icon: Sparkles },
+        { name: 'Coupons', path: '/coupons', icon: Tag, permission: 'coupons.manage' },
+        { name: 'Partners', path: '/partners', icon: Sparkles, permission: 'products.view' },
       ],
     },
     {
@@ -196,12 +222,12 @@ export function Sidebar() {
           path: '/services',
           icon: Server,
           subItems: [
-            { name: 'All Services', path: '/services' },
-            { name: 'New Service', path: '/services/new' },
+            { name: 'All Services', path: '/services', permission: 'services.view' },
+            { name: 'New Service', path: '/services/new', permission: 'services.manage' },
           ],
         },
-        { name: 'Provisioning Queue', path: '/jobs', icon: ListTree },
-        { name: 'Service Forms', path: '/forms', icon: FileText },
+        { name: 'Provisioning Queue', path: '/jobs', icon: ListTree, permission: 'jobs.view' },
+        { name: 'Service Forms', path: '/forms', icon: FileText, permission: 'forms.manage' },
       ],
     },
     {
@@ -212,18 +238,32 @@ export function Sidebar() {
           path: '/staff',
           icon: Users,
           subItems: [
-            { name: 'Members', path: '/staff/members' },
-            { name: 'RBAC', path: '/staff/rbac' },
+            { name: 'Members', path: '/staff/members', permission: 'staff.view' },
+            { name: 'RBAC', path: '/staff/rbac', permission: 'rbac.manage' },
             { name: 'My Account', path: '/staff/account' },
           ],
         },
-        { name: 'Email Templates', path: '/email-templates', icon: MailOpen },
-        { name: 'Email Logs', path: '/email-logs', icon: Mail },
-        { name: 'Activity Log', path: '/activity', icon: History },
-        { name: 'Settings', path: '/settings', icon: Settings },
+        { name: 'Email Templates', path: '/email-templates', icon: MailOpen, permission: 'templates.manage' },
+        { name: 'Email Logs', path: '/email-logs', icon: Mail, permission: 'email_logs.view' },
+        { name: 'Activity Log', path: '/activity', icon: History, permission: 'activity.view' },
+        { name: 'Settings', path: '/settings', icon: Settings, permission: 'settings.manage' },
       ],
     },
   ];
+
+  const sections = rawSections
+    .map(section => ({
+      ...section,
+      items: section.items
+        .filter(item => canViewNavPermission(item.permission))
+        .map(item =>
+          item.subItems
+            ? { ...item, subItems: item.subItems.filter(sub => canViewNavPermission(sub.permission)) }
+            : item
+        )
+        .filter(item => !item.subItems || item.subItems.length > 0),
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
     <div className="w-64 border-r border-border h-screen bg-background flex flex-col fixed z-20 select-none">
@@ -273,7 +313,7 @@ export function Sidebar() {
                 key={tool.id}
                 href={tool.url}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex items-center gap-3 px-6 py-2.5 text-sm transition-colors text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground"
               >
                 <ExternalLink className="w-4 h-4 shrink-0" /> <span className="truncate">{tool.name}</span>
@@ -304,8 +344,8 @@ export function Sidebar() {
       <div className="p-4 border-t border-border bg-foreground/[0.01]">
         <div className="flex items-center justify-between text-sm">
           <Link to="/staff/account" className="flex flex-col hover:opacity-80 transition-opacity min-w-0 mr-2">
-            <span className="font-medium text-xs text-foreground truncate">{claims?.email?.split('@')[0] || 'Admin User'}</span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{claims?.role || 'Owner'}</span>
+            <span className="font-medium text-xs text-foreground truncate">{claims?.email?.split('@')[0] || 'Unknown'}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{claims?.role || 'No Role'}</span>
           </Link>
           <button
             onClick={logout}

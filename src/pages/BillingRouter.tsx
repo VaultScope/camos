@@ -32,7 +32,7 @@ function BillingInsights() {
       .catch(() => {});
   }, []);
 
-  if (!stats) return <Page title="Billing Insights"><div className="p-5">Loading...</div></Page>;
+  if (!stats) return <Page title="Billing Insights" requiredPermission="billing.view"><div className="p-5">Loading...</div></Page>;
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -54,7 +54,7 @@ function BillingInsights() {
   ];
 
   return (
-    <Page title="Billing Insights">
+    <Page title="Billing Insights" requiredPermission="billing.view">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
         {/* 1. Invoices PieChart */}
         <div className="border border-border p-5 bg-background">
@@ -229,7 +229,7 @@ function BillingAutomations() {
   };
 
   return (
-    <Page title="Billing Automations">
+    <Page title="Billing Automations" requiredPermission="billing.manage">
       <div className="flex justify-between items-center mb-6">
         <p className="text-sm text-muted-foreground">Configure automated billing workflows and payment reminders.</p>
         <button

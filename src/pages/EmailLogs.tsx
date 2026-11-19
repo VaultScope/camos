@@ -57,7 +57,7 @@ export default function EmailLogs() {
   });
 
   return (
-    <Page title="Email Logs & Notifications">
+    <Page title="Email Logs & Notifications" requiredPermission="email_logs.view">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <p className="text-sm text-muted-foreground">
           Audit history and delivery logs for automated platform emails, customer notifications, and staff dispatches.

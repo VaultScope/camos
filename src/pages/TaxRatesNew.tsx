@@ -48,7 +48,7 @@ export default function TaxRatesPage() {
   };
 
   return (
-    <Page title="Tax Rates">
+    <Page title="Tax Rates" requiredPermission="tax.manage">
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-muted-foreground">Configure tax rates applied to invoices based on customer country.</p>
         <button

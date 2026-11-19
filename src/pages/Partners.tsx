@@ -300,7 +300,7 @@ export default function Partners() {
   const overallCr = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(1) : '0.0';
 
   return (
-    <Page title="Partner Campaigns">
+    <Page title="Partner Campaigns" requiredPermission="products.view">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <p className="text-sm text-muted-foreground">

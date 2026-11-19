@@ -4,6 +4,7 @@ import { Page } from '../components/Layout';
 import { Shield, Users, Plus, Edit2, Camera, Key, Mail, CheckCircle2, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { getStoredClaims } from '../lib/auth';
 import { useToast } from '../components/Toast';
 import type { Staff, Role, Customer } from '../lib/types';
 
@@ -208,6 +209,11 @@ function StaffMembers() {
   const [saving, setSaving] = useState(false);
 
   const items = staffList || [];
+  const claims = getStoredClaims();
+  const rootStaffId = items[0]?.id;
+  const isRootUser = (staffId: string) => Boolean(rootStaffId && staffId === rootStaffId);
+  const isEditingRoot = modalMode === 'edit' && isRootUser(editStaff.id);
+  const isEditingSelf = modalMode === 'edit' && Boolean(claims?.sub && claims.sub === editStaff.id);
   const filtered = items.filter(s =>
     s.first_name.toLowerCase().includes(searchStaff.toLowerCase()) ||
     s.last_name.toLowerCase().includes(searchStaff.toLowerCase()) ||
@@ -223,6 +229,10 @@ function StaffMembers() {
   };
 
   const openEditModal = (s: StaffWithRole) => {
+    if (isRootUser(s.id) && claims?.sub !== s.id) {
+      toast.error('The root user account can only be edited by the root user.');
+      return;
+    }
     setSelectedCustomerId('');
     setEditStaff({ id: s.id, first_name: s.first_name, last_name: s.last_name, username: s.username, email: s.email, role_id: s.role_id || roles?.[0]?.id || '', password: '' });
     setModalMode('edit');
@@ -249,14 +259,23 @@ function StaffMembers() {
   };
 
   const handleSave = async () => {
-    if (!editStaff.username.trim() || !editStaff.email.trim() || saving) return;
+    if (!editStaff.username.trim() || !editStaff.email.trim() || !editStaff.role_id || saving) return;
+    const trimmedPassword = editStaff.password.trim();
+    if (modalMode === 'create' && trimmedPassword.length < 8) {
+      toast.error('Please enter a dedicated staff password of at least 8 characters.');
+      return;
+    }
+    if (modalMode === 'edit' && editStaff.password.length > 0 && trimmedPassword.length < 8) {
+      toast.error('New password must be at least 8 characters.');
+      return;
+    }
     setSaving(true);
     try {
       if (modalMode === 'create' && selectedCustomerId) {
         await api.post(`/admin/customers/${selectedCustomerId}/promote`, {
           role_id: editStaff.role_id,
           username: editStaff.username.trim() || undefined,
-          password: editStaff.password.trim() || undefined,
+          password: editStaff.password,
         });
         toast.success('Customer promoted to staff successfully');
       } else if (modalMode === 'create') {
@@ -266,18 +285,23 @@ function StaffMembers() {
           username: editStaff.username,
           email: editStaff.email,
           role_id: editStaff.role_id,
-          password: editStaff.password.trim() || undefined,
+          password: editStaff.password,
         });
         toast.success('Staff member created successfully');
       } else {
-        await api.put(`/admin/staff/${editStaff.id}`, {
+        const updatePayload: Record<string, unknown> = {
           first_name: editStaff.first_name,
           last_name: editStaff.last_name,
           username: editStaff.username,
-          email: editStaff.email,
-          role_id: editStaff.role_id,
-          password: editStaff.password.trim() || undefined,
-        });
+          password: trimmedPassword ? editStaff.password : undefined,
+        };
+        if (!isEditingRoot) {
+          updatePayload.email = editStaff.email;
+        }
+        if (!isEditingRoot && !isEditingSelf) {
+          updatePayload.role_id = editStaff.role_id;
+        }
+        await api.put(`/admin/staff/${editStaff.id}`, updatePayload);
         toast.success('Staff member updated successfully');
       }
       setIsModalOpen(false);
@@ -295,24 +319,11 @@ function StaffMembers() {
     const formData = new FormData();
     formData.append('avatar', file);
     try {
-      const apiBase =
-        typeof window !== 'undefined' &&
-        (window.location.hostname === 'vaultscope.de' ||
-          window.location.hostname.endsWith('.vaultscope.de'))
-          ? '/api'
-          : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-      const res = await fetch(`${apiBase}/admin/staff/${editStaff.id}/avatar`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('vs_admin_token')}`
-        }
-      });
-      if (!res.ok) throw new Error('Failed to upload');
+      await api.post(`/admin/staff/${editStaff.id}/avatar`, formData);
       toast.success('Avatar uploaded successfully');
       refetch();
     } catch (err) {
-      toast.error('Avatar upload failed');
+      toast.error(err instanceof Error ? err.message : 'Avatar upload failed');
     }
   };
 
@@ -331,7 +342,7 @@ function StaffMembers() {
   };
 
   return (
-    <Page title="Identity, Staff & RBAC">
+    <Page title="Identity, Staff & RBAC" requiredPermission="staff.view">
       <StaffTabs />
       <div className="flex flex-col md:flex-row gap-3 mb-4 bg-foreground/[0.02] border border-border p-3">
         <div className="flex-1">
@@ -359,9 +370,10 @@ function StaffMembers() {
             <div className="text-right">Last Login</div>
             <div className="text-right">Actions</div>
           </div>
-          {filtered.map((s, index) => {
-            const isRoot = index === 0 && !searchStaff;
-            const disableDelete = isRoot || items[0]?.id === s.id;
+          {filtered.map((s) => {
+            const isRoot = isRootUser(s.id);
+            const disableDelete = isRoot || claims?.sub === s.id;
+            const disableEdit = isRoot && claims?.sub !== s.id;
             return (
               <div key={s.id} className="p-4 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.02]">
                 <div className="col-span-2 flex items-center gap-3">
@@ -374,7 +386,12 @@ function StaffMembers() {
                 <div><span className="px-2 py-1 border border-border text-xs">{s.role_name}</span></div>
                 <div className="text-right text-muted-foreground text-xs">{s.last_login?.split('T')[0] || 'Never'}</div>
                 <div className="text-right flex justify-end gap-2">
-                  <button onClick={() => openEditModal(s)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
+                  <button
+                    onClick={() => openEditModal(s)}
+                    disabled={disableEdit}
+                    className={`text-xs border border-border p-1.5 transition-colors ${disableEdit ? 'opacity-50 cursor-not-allowed text-muted-foreground' : 'hover:bg-foreground/5 cursor-pointer'}`}
+                    title={disableEdit ? 'Root user cannot be edited by other accounts' : 'Edit'}
+                  >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(s.id, s.username, disableDelete)} className={`text-xs border p-1.5 transition-colors ${disableDelete ? 'opacity-50 cursor-not-allowed border-border text-muted-foreground' : 'border-red-500/30 text-red-500 hover:bg-red-500/5 cursor-pointer'}`} title="Delete" disabled={disableDelete}>
@@ -449,28 +466,50 @@ function StaffMembers() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email</label>
-                <input type="email" value={editStaff.email} onChange={e => setEditStaff({...editStaff, email: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground" />
+                <input
+                  type="email"
+                  value={editStaff.email}
+                  disabled={isEditingRoot}
+                  onChange={e => setEditStaff({...editStaff, email: e.target.value})}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {isEditingRoot && (
+                  <p className="text-[11px] text-muted-foreground mt-1">Root user email cannot be changed here.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
-                  Password {modalMode === 'edit' ? '(Leave empty to keep unchanged)' : selectedCustomerId ? '(Optional - uses customer password if empty)' : '(Optional)'}
+                  {modalMode === 'edit' ? 'Password (Leave empty to keep unchanged)' : 'Staff Password * (min 8 chars)'}
                 </label>
                 <input
                   type="password"
+                  required={modalMode === 'create'}
+                  minLength={8}
+                  autoComplete="new-password"
                   value={editStaff.password}
                   onChange={e => setEditStaff({...editStaff, password: e.target.value})}
-                  placeholder={modalMode === 'edit' ? '••••••••' : selectedCustomerId ? 'Leave empty to use customer password' : 'Enter password...'}
+                  placeholder={modalMode === 'edit' ? '••••••••' : 'Minimum 8 characters'}
                   className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Role</label>
-                <select value={editStaff.role_id} onChange={e => setEditStaff({...editStaff, role_id: e.target.value})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground">
+                <select
+                  value={editStaff.role_id}
+                  disabled={isEditingRoot || isEditingSelf}
+                  onChange={e => setEditStaff({...editStaff, role_id: e.target.value})}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <option value="" disabled>Select Role...</option>
                   {roles?.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+                {(isEditingRoot || isEditingSelf) && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {isEditingRoot ? 'Root user role cannot be modified.' : 'You cannot change your own role.'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -478,7 +517,14 @@ function StaffMembers() {
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer border border-transparent">Cancel</button>
               <button
                 onClick={handleSave}
-                disabled={!editStaff.username || !editStaff.email || saving}
+                disabled={
+                  !editStaff.username.trim() ||
+                  !editStaff.email.trim() ||
+                  !editStaff.role_id ||
+                  (modalMode === 'create' && editStaff.password.trim().length < 8) ||
+                  (modalMode === 'edit' && editStaff.password.length > 0 && editStaff.password.trim().length < 8) ||
+                  saving
+                }
                 className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 {saving ? 'Saving...' : modalMode === 'create' ? 'Add User' : 'Save Changes'}
@@ -497,6 +543,12 @@ function StaffRbac() {
   const toast = useToast();
 
   const items = roles || [];
+  const claims = getStoredClaims();
+  const callerRole = items.find(r => r.name === claims?.role);
+  const canGrantWildcard =
+    claims?.role === 'Owner' ||
+    Boolean(claims?.permissions?.includes('*')) ||
+    Boolean(callerRole?.permissions.includes('*'));
   const filtered = items.filter(r =>
     r.name.toLowerCase().includes(searchRole.toLowerCase()) ||
     r.mapped_group.toLowerCase().includes(searchRole.toLowerCase()) ||
@@ -517,10 +569,14 @@ function StaffRbac() {
     Staff: ['staff.view', 'staff.manage', 'staff.delete', 'accounts.delete', 'rbac.manage'],
     Products: ['products.view', 'products.manage', 'products.create', 'products.edit', 'products.delete', 'forms.manage'],
     Tickets: ['tickets.view', 'tickets.manage', 'tickets.reply', 'departments.manage'],
-    System: ['settings.manage', 'templates.manage', 'email_logs.view', 'email_logs.manage', 'activity.view', 'reports.view']
+    System: ['settings.manage', 'templates.manage', 'mail.manage', 'email_logs.view', 'email_logs.manage', 'activity.view', 'reports.view', 'notifications.view', 'notifications.manage', 'internal_tools.view', 'internal_tools.manage']
   };
 
   const handleTogglePerm = (perm: string) => {
+    if (perm === '*' && !canGrantWildcard && !editRole.permissions.includes('*')) {
+      toast.error('Only Owner / wildcard administrators can grant wildcard (*) permissions.');
+      return;
+    }
     if (editRole.permissions.includes(perm)) {
       setEditRole({ ...editRole, permissions: editRole.permissions.filter(p => p !== perm) });
     } else {
@@ -541,12 +597,22 @@ function StaffRbac() {
   };
 
   const handleSaveRole = async () => {
-    if (!editRole.name.trim() || !editRole.mapped_group.trim()) return;
+    const trimmedName = editRole.name.trim();
+    const trimmedGroup = editRole.mapped_group.trim();
+    if (!trimmedName || !trimmedGroup) return;
+    if (!/^[a-z0-9._-]+$/i.test(trimmedGroup) || trimmedGroup.includes('*')) {
+      toast.error('OIDC Mapped Group must contain only letters, numbers, dots, underscores, or hyphens.');
+      return;
+    }
+    if (editRole.permissions.includes('*') && !canGrantWildcard) {
+      toast.error('Only Owner / wildcard administrators can assign wildcard (*) permissions.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
-        name: editRole.name.trim(),
-        mapped_group: editRole.mapped_group.trim(),
+        name: trimmedName,
+        mapped_group: trimmedGroup,
         permissions: editRole.permissions,
       };
 
@@ -575,7 +641,7 @@ function StaffRbac() {
   };
 
   return (
-    <Page title="Identity, Staff & RBAC">
+    <Page title="Identity, Staff & RBAC" requiredPermission="rbac.manage">
       <StaffTabs />
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-4 bg-foreground/[0.02] border border-border p-3">
         <div className="flex-1 max-w-lg">
@@ -650,9 +716,23 @@ function StaffRbac() {
 
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Mapped Group</label>
-                <input type="text" value={editRole.mapped_group} onChange={e => setEditRole({...editRole, mapped_group: e.target.value.toLowerCase().replace(/\s+/g, '_')})} className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="e.g. legal_team" />
-                <p className="text-[10px] text-muted-foreground mt-1">Users from your OIDC provider matching this group will be automatically assigned this role.</p>
+                <input
+                  type="text"
+                  value={editRole.mapped_group}
+                  onChange={e => setEditRole({...editRole, mapped_group: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
+                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                  placeholder="e.g. legal_team"
+                />
+                <p className="text-[11px] text-amber-500 mt-1">
+                  Warning: Any user assigned this OIDC group in your identity provider automatically inherits every permission checked below. Restrict group membership tightly.
+                </p>
               </div>
+
+              {editRole.permissions.includes('*') && (
+                <div className="p-3 border border-red-500/40 bg-red-500/10 text-red-400 text-xs">
+                  <strong>High-Privilege Warning:</strong> Wildcard (<code>*</code>) grants unrestricted super-admin access to all CAMOS & API resources, including RBAC, staff, and billing secrets.
+                </div>
+              )}
 
               <div className="pt-4 border-t border-border">
                 <div className="flex justify-between items-center mb-3">
@@ -681,7 +761,7 @@ function StaffRbac() {
                     <option value="Technical">Technical</option>
                     <option value="Infrastructure Admin">Infrastructure Admin</option>
                     <option value="Account Manager">Account Manager</option>
-                    <option value="Root">Root</option>
+                    {canGrantWildcard && <option value="Root">Root</option>}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -689,12 +769,21 @@ function StaffRbac() {
                     <div key={group} className="space-y-2">
                       <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">{group}</h4>
                       <div className="space-y-1">
-                        {perms.map(perm => (
-                          <label key={perm} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-foreground/[0.02] p-1 border border-transparent hover:border-border">
-                            <input type="checkbox" checked={editRole.permissions.includes(perm)} onChange={() => handleTogglePerm(perm)} className="accent-foreground w-4 h-4" />
-                            <span className="font-mono text-xs">{perm}</span>
-                          </label>
-                        ))}
+                        {perms.map(perm => {
+                          const isWildcardDisabled = perm === '*' && !canGrantWildcard && !editRole.permissions.includes('*');
+                          return (
+                            <label key={perm} className={`flex items-center gap-2 text-sm p-1 border border-transparent ${isWildcardDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-foreground/[0.02] hover:border-border'}`}>
+                              <input
+                                type="checkbox"
+                                checked={editRole.permissions.includes(perm)}
+                                disabled={isWildcardDisabled}
+                                onChange={() => handleTogglePerm(perm)}
+                                className="accent-foreground w-4 h-4"
+                              />
+                              <span className="font-mono text-xs">{perm}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
