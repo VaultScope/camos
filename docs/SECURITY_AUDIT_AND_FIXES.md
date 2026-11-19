@@ -1,7 +1,9 @@
 # Security Audit & Recommended Fixes
 
+> **Notice (2026-11-19):** This historical August 2026 audit document is **superseded by the 2026-11-19 security audit and remediation**. Several statements below are outdated; see the 2026-11-19 remediation commits for current XSS sanitization, CSRF, RBAC, secret handling, and deployment hardening controls.
+
 **Date:** 2026-08-25  
-**Status:** Audit Complete, HIGH & MEDIUM Fixes Implemented
+**Status:** Superseded by 2026-11-19 Audit & Remediation
 
 ## Executive Summary
 
