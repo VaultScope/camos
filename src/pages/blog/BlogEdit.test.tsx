@@ -137,4 +137,56 @@ describe('BlogEdit - Markdown Editor with Live Preview', () => {
       expect(screen.getByText('Section 1')).toBeDefined();
     });
   });
+
+  it('sanitizes XSS payloads in markdown preview', () => {
+    const { container } = renderComponent('/blog/new');
+    const textarea = screen.getByPlaceholderText(/Write your article in Markdown here.../i);
+
+    fireEvent.change(textarea, {
+      target: {
+        value:
+          '<script>alert(1)</script><img src="x" onerror="alert(1)">\n\n[Bad](javascript:alert(1)) [Good](https://vaultscope.de)',
+      },
+    });
+
+    const preview = container.querySelector('.markdown-preview');
+    expect(preview).not.toBeNull();
+    expect(preview!.querySelector('script')).toBeNull();
+    const img = preview!.querySelector('img');
+    expect(img?.getAttribute('onerror')).toBeNull();
+    const links = Array.from(preview!.querySelectorAll('a'));
+    expect(links.some(a => (a.getAttribute('href') || '').toLowerCase().startsWith('javascript:'))).toBe(false);
+    expect(links.some(a => a.getAttribute('href') === 'https://vaultscope.de')).toBe(true);
+  });
+
+  it('rejects unsafe URLs in insertLink, insertImagePrompt, and cover image field', async () => {
+    renderComponent('/blog/new');
+    const titleInput = screen.getByPlaceholderText(/Designing Native IPv6 Infrastructure/i);
+    fireEvent.change(titleInput, { target: { value: 'Security Test' } });
+
+    // Reject javascript: in insertLink
+    const promptSpy = vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce('Click me')
+      .mockReturnValueOnce('javascript:alert(1)');
+    fireEvent.click(screen.getByTitle('Insert Link (Ctrl+K)'));
+    const textarea = screen.getByPlaceholderText(/Write your article in Markdown here.../i) as HTMLTextAreaElement;
+    expect(textarea.value).not.toContain('javascript:alert(1)');
+
+    // Reject data: in insertImagePrompt
+    promptSpy.mockReturnValueOnce('Alt').mockReturnValueOnce('data:text/html,<script>alert(1)</script>');
+    fireEvent.click(screen.getByTitle('Insert Image from External URL'));
+    expect(textarea.value).not.toContain('data:text/html');
+
+    // Reject javascript: cover image URL from previewing and saving
+    const coverInput = screen.getByPlaceholderText(/https:\/\/\.\.\. or click Upload/i);
+    fireEvent.change(coverInput, { target: { value: 'javascript:alert(1)' } });
+    expect(screen.queryByAltText('Thumbnail preview')).toBeNull();
+    expect(screen.getByText(/Cover image URL must start with/i)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /Publish Article/i }));
+    await waitFor(() => {
+      expect(api.post).not.toHaveBeenCalled();
+    });
+    promptSpy.mockRestore();
+  });
 });

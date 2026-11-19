@@ -36,7 +36,9 @@ import {
   Upload
 } from 'lucide-react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { api } from '../../lib/api';
+import { isSafeContentUrl } from '../../lib/url';
 import { useToast } from '../../components/Toast';
 
 // Configure marked for GitHub-flavored markdown
@@ -260,9 +262,14 @@ export default function BlogEdit() {
     const selectedText = textarea ? content.substring(textarea.selectionStart, textarea.selectionEnd) : '';
     const linkText = window.prompt('Link title / anchor text:', selectedText || 'Link text');
     if (linkText === null) return;
-    const url = window.prompt('Destination URL:', 'https://');
+    const url = window.prompt('Destination URL (https://, http://, or /...):', 'https://');
     if (url === null) return;
-    insertFormat(`[${linkText || 'link'}](${url})`, '', '');
+    const trimmedUrl = url.trim();
+    if (!isSafeContentUrl(trimmedUrl)) {
+      toast.error('Invalid URL. Only https://, http://, or relative / paths are allowed.');
+      return;
+    }
+    insertFormat(`[${linkText || 'link'}](${trimmedUrl})`, '', '');
   };
 
   const coverFileInputRef = useRef<HTMLInputElement>(null);
@@ -274,34 +281,7 @@ export default function BlogEdit() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('subfolder', 'blog');
-    const apiBase =
-      typeof window !== 'undefined' &&
-      (window.location.hostname === 'vaultscope.de' ||
-        window.location.hostname.endsWith('.vaultscope.de'))
-        ? '/api'
-        : import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const token = localStorage.getItem('vs_admin_token') || '';
-
-    const csrfRes = await fetch(`${apiBase}/csrf`, { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
-    const csrfToken = csrfRes?.token || '';
-
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (csrfToken) headers['x-csrf-token'] = csrfToken;
-
-    const res = await fetch(`${apiBase}/admin/media/upload`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Upload failed (${res.status})`);
-    }
-
-    const data = await res.json();
+    const data = await api.post<{ url: string }>('/admin/media/upload', formData);
     return data.url;
   };
 
@@ -346,9 +326,14 @@ export default function BlogEdit() {
   const insertImagePrompt = () => {
     const altText = window.prompt('Image description (Alt text):', 'Image description');
     if (altText === null) return;
-    const url = window.prompt('Image URL (https://...):', 'https://');
+    const url = window.prompt('Image URL (https://, http://, or /...):', 'https://');
     if (url === null) return;
-    insertFormat(`![${altText || 'image'}](${url})`, '', '');
+    const trimmedUrl = url.trim();
+    if (!isSafeContentUrl(trimmedUrl)) {
+      toast.error('Invalid image URL. Only https://, http://, or relative / paths are allowed.');
+      return;
+    }
+    insertFormat(`![${altText || 'image'}](${trimmedUrl})`, '', '');
   };
 
   // Handle Tab key and common shortcuts inside the editor textarea
@@ -395,11 +380,14 @@ export default function BlogEdit() {
     return { wordCount, charCount, lineCount, readingTime };
   }, [content]);
 
-  // Live parsed HTML preview
+  // Live parsed HTML preview (sanitized against stored XSS)
   const renderedHtml = useMemo(() => {
     if (!content.trim()) return '';
     try {
-      return marked.parse(content) as string;
+      const rawHtml = marked.parse(content) as string;
+      return DOMPurify.sanitize(rawHtml, {
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i,
+      });
     } catch {
       return '<p class="text-red-500">Error parsing markdown.</p>';
     }
@@ -422,6 +410,12 @@ export default function BlogEdit() {
 
     if (!content.trim()) {
       toast.error('Article content cannot be empty');
+      return;
+    }
+
+    const trimmedImageUrl = imageUrl.trim();
+    if (trimmedImageUrl && !isSafeContentUrl(trimmedImageUrl)) {
+      toast.error('Cover image URL must start with https://, http://, or /');
       return;
     }
 
@@ -701,12 +695,17 @@ export default function BlogEdit() {
                 <Upload className={`w-3.5 h-3.5 ${uploadingCover ? 'animate-bounce' : ''}`} />
                 <span>{uploadingCover ? 'Uploading...' : 'Upload Image'}</span>
               </button>
-              {imageUrl && (
+              {isSafeContentUrl(imageUrl) && (
                 <div className="w-10 h-8 rounded border border-border overflow-hidden shrink-0 bg-muted">
-                  <img src={imageUrl} alt="Thumbnail preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                  <img src={imageUrl.trim()} alt="Thumbnail preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
                 </div>
               )}
             </div>
+            {imageUrl.trim() && !isSafeContentUrl(imageUrl) && (
+              <p className="text-[11px] text-destructive font-mono">
+                Cover image URL must start with https://, http://, or /
+              </p>
+            )}
           </div>
         </div>
 
@@ -1068,9 +1067,9 @@ export default function BlogEdit() {
                     </p>
                   )}
 
-                  {imageUrl && (
+                  {isSafeContentUrl(imageUrl) && (
                     <div className="mt-4 w-full h-48 rounded-lg overflow-hidden border border-border">
-                      <img src={imageUrl} alt={title || 'Cover'} className="w-full h-full object-cover" />
+                      <img src={imageUrl.trim()} alt={title || 'Cover'} className="w-full h-full object-cover" />
                     </div>
                   )}
                 </header>
