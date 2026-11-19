@@ -35,7 +35,7 @@ function CustomerList() {
   });
 
   return (
-    <Page title="Customer Management">
+    <Page title="Customer Management" requiredPermission="customers.view">
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-3 flex-1 max-w-lg">
           <input
@@ -145,14 +145,13 @@ function CustomerDetail() {
 
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
   const handleResendVerification = async () => {
     if (!customer || resendingVerification) return;
     setResendingVerification(true);
     try {
-      const res = await api.post<{ ok: boolean; message: string; verification_token?: string; verification_link?: string }>(
+      const res = await api.post<{ ok: boolean; message: string }>(
         `/admin/customers/${customer.id}/resend-verification`
       );
       toast.success(res.message || 'Verification email sent!');
@@ -179,15 +178,10 @@ function CustomerDetail() {
     }
   };
 
-  const handleCopy = (text: string, type: 'link' | 'id') => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    if (type === 'link') {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } else {
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    }
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
     toast.success('Copied to clipboard');
   };
 
@@ -202,12 +196,16 @@ function CustomerDetail() {
 
   const handlePromote = async () => {
     if (!customer || !promoteRoleId || promoting) return;
+    if (promotePassword.trim().length < 8) {
+      toast.error('Please set a dedicated staff password of at least 8 characters.');
+      return;
+    }
     setPromoting(true);
     try {
       await api.post(`/admin/customers/${customer.id}/promote`, {
         role_id: promoteRoleId,
         username: promoteUsername.trim() || undefined,
-        password: promotePassword.trim() || undefined,
+        password: promotePassword,
       });
       toast.success(`${customer.name} promoted to staff member successfully!`);
       setIsPromoteModalOpen(false);
@@ -242,12 +240,12 @@ function CustomerDetail() {
   }
 
   if (loading) {
-    return <Page title="Customer"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
+    return <Page title="Customer" requiredPermission="customers.view"><div className="p-8 text-center text-muted-foreground text-sm">Loading...</div></Page>;
   }
 
   if (error || !customer) {
     return (
-      <Page title="Customer Not Found">
+      <Page title="Customer Not Found" requiredPermission="customers.view">
         <p className="text-sm text-muted-foreground">{error || `No customer with ID ${id}.`}</p>
         <Link to="/customers" className="text-sm text-foreground hover:underline mt-2 inline-block">Back to customers</Link>
       </Page>
@@ -297,7 +295,7 @@ function CustomerDetail() {
   ] as const;
 
   return (
-    <Page title="Customer Management">
+    <Page title="Customer Management" requiredPermission="customers.view">
       <button onClick={() => navigate('/customers')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer">
         <ArrowLeft className="w-4 h-4" /> All Customers
       </button>
@@ -342,24 +340,6 @@ function CustomerDetail() {
                   )}
                 </div>
               </div>
-
-              {customer.verification_token && !customer.email_verified && (
-                <div className="p-2 border border-yellow-500/20 bg-yellow-500/5 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] uppercase font-medium text-yellow-500">Verification Link</span>
-                    <button
-                      onClick={() => handleCopy(`https://vaultscope.de/verify-email?token=${customer.verification_token}`, 'link')}
-                      className="text-[10px] px-1.5 py-0.5 border border-border bg-background hover:bg-foreground/5 flex items-center gap-1 cursor-pointer"
-                    >
-                      {copiedLink ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
-                      {copiedLink ? 'Copied' : 'Copy Link'}
-                    </button>
-                  </div>
-                  <div className="font-mono text-[10px] truncate text-muted-foreground select-all">
-                    https://vaultscope.de/verify-email?token={customer.verification_token}
-                  </div>
-                </div>
-              )}
 
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground text-xs uppercase">Company</span>
@@ -408,7 +388,7 @@ function CustomerDetail() {
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-xs" title={customer.id}>{customer.id.slice(0, 8)}...</span>
                   <button
-                    onClick={() => handleCopy(customer.id, 'id')}
+                    onClick={() => handleCopy(customer.id)}
                     className="p-1 hover:bg-foreground/5 cursor-pointer text-muted-foreground hover:text-foreground"
                     title="Copy full Customer ID"
                   >
@@ -694,16 +674,19 @@ function CustomerDetail() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Password (Optional)</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Dedicated Staff Password *</label>
                 <input
                   type="password"
+                  required
+                  minLength={8}
                   value={promotePassword}
                   onChange={e => setPromotePassword(e.target.value)}
-                  placeholder="Leave empty to use customer password"
+                  placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
                   className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
                 />
                 <span className="text-[11px] text-muted-foreground mt-1 block">
-                  Leave empty to retain this customer's current password for admin login.
+                  A dedicated staff password (at least 8 characters) is required for admin promotion.
                 </span>
               </div>
             </div>
@@ -719,7 +702,7 @@ function CustomerDetail() {
               <button
                 type="button"
                 onClick={handlePromote}
-                disabled={!promoteRoleId || promoting}
+                disabled={!promoteRoleId || promotePassword.trim().length < 8 || promoting}
                 className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-2"
               >
                 {promoting ? 'Promoting...' : 'Make Staff Member'}

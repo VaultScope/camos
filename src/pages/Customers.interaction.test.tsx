@@ -226,5 +226,34 @@ describe('Customers interaction tests', () => {
 
       expect(mockApi.put).not.toHaveBeenCalled();
     });
+
+    it('renders without verification_token and requires >= 8 char password when promoting customer to staff', async () => {
+      const user = userEvent.setup();
+      mockUseApi.mockImplementation((url: string) => {
+        if (url === '/admin/customers/c1')
+          return { data: { ...mockCustomer, email_verified: false }, loading: false, error: null, refetch: refetchFn };
+        if (url === '/admin/staff/roles')
+          return { data: [{ id: 'role-support', name: 'Support', permissions: ['tickets.view'], mapped_group: 'support' }], loading: false, error: null, refetch: vi.fn() };
+        return { data: [], loading: false, error: null, refetch: vi.fn() };
+      });
+
+      const Customers = (await import('./Customers')).default;
+      render(<MemoryRouter initialEntries={['/c1']}><Customers /></MemoryRouter>);
+
+      expect(screen.queryByText(/Verification Link/i)).toBeNull();
+      await user.click(screen.getByRole('button', { name: /Make Staff Member/i }));
+
+      const submitButtons = screen.getAllByRole('button', { name: /Make Staff Member/i });
+      const modalSubmit = submitButtons[submitButtons.length - 1] as HTMLButtonElement;
+      expect(modalSubmit.disabled).toBe(true);
+
+      const pwInput = screen.getByPlaceholderText('Minimum 8 characters');
+      await user.type(pwInput, 'short');
+      expect(modalSubmit.disabled).toBe(true);
+
+      await user.clear(pwInput);
+      await user.type(pwInput, 'ValidStaffPass123!');
+      expect(modalSubmit.disabled).toBe(false);
+    });
   });
 });

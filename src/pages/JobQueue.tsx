@@ -55,7 +55,7 @@ export default function JobQueue() {
   });
 
   return (
-    <Page title="Provisioning & Automation Queue">
+    <Page title="Provisioning & Automation Queue" requiredPermission="jobs.view">
       <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
         <p className="text-sm text-muted-foreground">Real-time log of upstream API calls (Hetzner, OVH, Mailcow, Listmonk).</p>
         <button className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-foreground/5 transition-colors cursor-pointer">
