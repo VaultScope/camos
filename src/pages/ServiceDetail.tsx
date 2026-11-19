@@ -4,6 +4,7 @@ import { Page } from '../components/Layout';
 import { ArrowLeft, Terminal, ShieldAlert, Power, RefreshCw, HardDrive, Wifi, X, ExternalLink, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { isSafeHttpUrl } from '../lib/url';
 import type { Service } from '../lib/types';
 
 const osImages = [
@@ -34,8 +35,16 @@ export default function ServiceDetail() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const closeIpmiModal = () => {
+    setShowIpmiModal(false);
+    setIpmiData(null);
+    setShowPassword(false);
+  };
+
   const handleOpenIpmi = async () => {
     if (!id) return;
+    setIpmiData(null);
+    setShowPassword(false);
     setShowIpmiModal(true);
     setIpmiLoading(true);
     try {
@@ -61,15 +70,15 @@ export default function ServiceDetail() {
     }
   };
 
-  if (loading) return <Page title="Instance Management"><div className="p-8 text-center text-muted-foreground text-sm">Loading service...</div></Page>;
-  if (error || !service) return <Page title="Instance Management"><div className="p-8 text-center text-red-500 text-sm">Failed to load service: {error}</div></Page>;
+  if (loading) return <Page title="Instance Management" requiredPermission="services.view"><div className="p-8 text-center text-muted-foreground text-sm">Loading service...</div></Page>;
+  if (error || !service) return <Page title="Instance Management" requiredPermission="services.view"><div className="p-8 text-center text-red-500 text-sm">Failed to load service: {error}</div></Page>;
 
   const statusColor = service.status === 'running' ? 'text-green-500' :
     service.status === 'suspended' ? 'text-yellow-500' :
     service.status === 'pending' ? 'text-blue-500' : 'text-red-500';
 
   return (
-    <Page title="Instance Management">
+    <Page title="Instance Management" requiredPermission="services.view">
       <div className="mb-6 flex justify-between items-center">
         <Link to="/services" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Services
@@ -276,7 +285,8 @@ export default function ServiceDetail() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-background border border-border p-6 max-w-xl w-full relative">
             <button
-              onClick={() => setShowIpmiModal(false)}
+              onClick={closeIpmiModal}
+              aria-label="Close IPMI modal"
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
@@ -349,10 +359,15 @@ export default function ServiceDetail() {
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={() => setShowIpmiModal(false)} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Close</button>
+                  <button onClick={closeIpmiModal} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Close</button>
                   <button
-                    onClick={() => window.open(ipmiData.web_url, '_blank')}
-                    className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                    disabled={!isSafeHttpUrl(ipmiData.web_url)}
+                    onClick={() => {
+                      if (isSafeHttpUrl(ipmiData.web_url)) {
+                        window.open(ipmiData.web_url, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ExternalLink className="w-4 h-4" /> Open Web IPMI
                   </button>

@@ -2,19 +2,26 @@ import { Page } from '../components/Layout';
 import { ExternalLink } from 'lucide-react';
 import { getStoredClaims } from '../lib/auth';
 import { useApi } from '../lib/hooks';
+import { isSafeHttpUrl } from '../lib/url';
 import type { InternalTool, Role } from '../lib/types';
 
 export default function Launchpad() {
   const { data: internalTools } = useApi<InternalTool[]>('/admin/internal-tools');
   const { data: roles } = useApi<Role[]>('/admin/staff/roles');
-  
+
   const claims = getStoredClaims();
   const currentRole = roles?.find(r => r.name === claims?.role);
-  const userPermissions = currentRole?.permissions || [];
-  
-  const visibleTools = internalTools?.filter(t => 
-    userPermissions.includes('*') || userPermissions.includes(t.required_permission)
-  ) || [];
+  const userPermissions =
+    claims?.role === 'Owner' || claims?.permissions?.includes('*')
+      ? ['*']
+      : currentRole?.permissions || claims?.permissions || [];
+
+  const visibleTools =
+    internalTools?.filter(
+      t =>
+        (userPermissions.includes('*') || userPermissions.includes(t.required_permission)) &&
+        isSafeHttpUrl(t.url)
+    ) || [];
 
   return (
     <Page title="Internal Tools & Telemetry">
@@ -28,10 +35,10 @@ export default function Launchpad() {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {visibleTools.map(tool => (
-          <a 
-            key={tool.id} 
-            href={tool.url} 
-            target="_blank" 
+          <a
+            key={tool.id}
+            href={tool.url}
+            target="_blank"
             rel="noopener noreferrer"
             className="border border-border p-6 block group bg-background hover:bg-foreground/[0.02] transition-colors relative"
           >
@@ -52,4 +59,3 @@ export default function Launchpad() {
     </Page>
   );
 }
-

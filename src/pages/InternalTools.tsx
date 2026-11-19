@@ -3,6 +3,8 @@ import { Page } from '../components/Layout';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { isSafeHttpUrl } from '../lib/url';
+import { useToast } from '../components/Toast';
 import type { InternalTool } from '../lib/types';
 
 export default function InternalTools() {
@@ -15,6 +17,7 @@ export default function InternalTools() {
   });
 
   const { data: tools, loading, error, refetch } = useApi<InternalTool[]>('/admin/internal-tools');
+  const toast = useToast();
 
   const openCreateModal = () => {
     setNewTool({ name: '', url: '', required_permission: '' });
@@ -47,22 +50,32 @@ export default function InternalTools() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedUrl = newTool.url.trim();
+    if (!isSafeHttpUrl(trimmedUrl)) {
+      toast.error('Invalid URL. Only http:// and https:// URLs are allowed.');
+      return;
+    }
+    const payload = {
+      name: newTool.name.trim(),
+      url: trimmedUrl,
+      required_permission: newTool.required_permission.trim(),
+    };
     try {
       if (modalMode === 'create') {
-        await api.post('/admin/internal-tools', newTool);
+        await api.post('/admin/internal-tools', payload);
       } else if (editingId) {
-        await api.put(`/admin/internal-tools/${editingId}`, newTool);
+        await api.put(`/admin/internal-tools/${editingId}`, payload);
       }
       setIsModalOpen(false);
       refetch();
     } catch (err) {
       console.error(err);
-      alert('Failed to save internal tool');
+      toast.error('Failed to save internal tool');
     }
   };
 
   return (
-    <Page title="Internal Tools">
+    <Page title="Internal Tools" requiredPermission="internal_tools.manage">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-100">Internal Tools</h1>
         <button onClick={openCreateModal} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
@@ -136,7 +149,8 @@ export default function InternalTools() {
                 <label className="block text-sm font-medium text-slate-400 mb-1">URL</label>
                 <input
                   required
-                  type="text"
+                  type="url"
+                  placeholder="https://grafana.vaultscope.de"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm"
                   value={newTool.url}
                   onChange={(e) => setNewTool({...newTool, url: e.target.value})}
