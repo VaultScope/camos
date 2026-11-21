@@ -147,6 +147,14 @@ class ApiClient {
     });
   }
 
+  patch<T>(path: string, body?: unknown) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    return this.request<T>(path, {
+      method: 'PATCH',
+      body: isFormData ? (body as FormData) : body ? JSON.stringify(body) : undefined,
+    });
+  }
+
   delete<T>(path: string) {
     return this.request<T>(path, { method: 'DELETE' });
   }

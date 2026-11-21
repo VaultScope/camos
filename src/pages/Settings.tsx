@@ -64,9 +64,12 @@ export default function Settings() {
     oidcClientId: '',
     oidcClientSecret: '',
     oidcIssuerUrl: '',
-    taxMode: 'exclusive',
-    defaultTaxRate: 19,
+    taxMode: 'small_business',
+    defaultTaxRate: 0,
     reverseChargeEnabled: true,
+    reliablesite_auto_fx_enabled: true,
+    reliablesite_usd_to_eur_rate: 0.91,
+    reliablesite_markup_percent: 15,
     invoicePrefix: 'INV',
     invoiceNextNumber: 901,
     invoiceDueDays: 14,
@@ -439,7 +442,8 @@ export default function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Tax Mode</label>
                   <select value={settings.taxMode} onChange={e => update('taxMode', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
-                    <option value="exclusive">Tax Exclusive (added on top)</option>
+                    <option value="small_business">Kleinunternehmer (§ 19 UStG — 0% VAT)</option>
+                    <option value="exclusive">Tax Exclusive (19% added on top)</option>
                     <option value="inclusive">Tax Inclusive (included in price)</option>
                   </select>
                 </div>
@@ -455,6 +459,48 @@ export default function Settings() {
                     <input type="checkbox" checked={settings.reverseChargeEnabled} onChange={e => update('reverseChargeEnabled', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer" />
                     Reverse Charge (B2B EU)
                   </label>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 items-end">
+                <div className="pb-2">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings.reliablesite_auto_fx_enabled)}
+                      onChange={e => update('reliablesite_auto_fx_enabled', e.target.checked)}
+                      className="w-4 h-4 accent-foreground cursor-pointer"
+                    />
+                    Live ECB USD → EUR Exchange Rate (auto-refresh)
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                    {settings.reliablesite_auto_fx_enabled
+                      ? 'Fallback USD → EUR Rate'
+                      : 'Fixed USD → EUR Rate'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={settings.reliablesite_usd_to_eur_rate}
+                    onChange={e => update('reliablesite_usd_to_eur_rate', parseFloat(e.target.value) || 0)}
+                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">Used when live ECB FX feed is disabled or unreachable.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">ReliableSite Retail Markup (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={settings.reliablesite_markup_percent}
+                      onChange={e => update('reliablesite_markup_percent', parseFloat(e.target.value) || 0)}
+                      className="w-full border border-border bg-transparent p-2.5 pr-8 text-sm focus:outline-none focus:border-foreground font-mono"
+                    />
+                    <span className="absolute right-3 top-2.5 text-muted-foreground text-sm">%</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Applied on top of the current USD → EUR rate.</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">

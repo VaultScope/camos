@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Page } from '../components/Layout';
 import { ArrowLeft, Terminal, ShieldAlert, Power, RefreshCw, HardDrive, Wifi, X, ExternalLink, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { hasPermission } from '../lib/auth';
 import { isSafeHttpUrl } from '../lib/url';
 import type { Service } from '../lib/types';
+
+const ORDER_STATE_OPTIONS = [
+  { value: 'payment_received', label: 'Payment Received / Order Queued' },
+  { value: 'provisioning', label: 'Hardware Provisioning (up to 7 business days)' },
+  { value: 'hardware_setup', label: 'Hardware Setup & OS Installation' },
+  { value: 'active', label: 'Active / Ready' },
+  { value: 'action_required', label: 'Action Required / Customer Info Needed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
 
 const osImages = [
   { id: 'ubuntu-24.04', name: 'Ubuntu 24.04 LTS', icon: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/ubuntu/ubuntu-original.svg' },
@@ -28,6 +38,41 @@ export default function ServiceDetail() {
   const [ipmiLoading, setIpmiLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [orderStateInput, setOrderStateInput] = useState('active');
+  const [orderNoteInput, setOrderNoteInput] = useState('');
+  const [orderIpInput, setOrderIpInput] = useState('');
+  const [notifyCustomer, setNotifyCustomer] = useState(true);
+  const [savingOrderState, setSavingOrderState] = useState(false);
+  const [orderStateMsg, setOrderStateMsg] = useState('');
+  const canManageServices = hasPermission('services.manage');
+
+  useEffect(() => {
+    if (service) {
+      setOrderStateInput(service.order_state || 'active');
+      setOrderNoteInput(service.order_state_note || '');
+      setOrderIpInput(service.ip || '');
+    }
+  }, [service?.id, service?.order_state, service?.order_state_note, service?.ip]);
+
+  const handleSaveOrderState = async () => {
+    if (!id || !canManageServices) return;
+    setSavingOrderState(true);
+    setOrderStateMsg('');
+    try {
+      await api.patch(`/admin/services/${id}/order-state`, {
+        order_state: orderStateInput,
+        order_state_note: orderNoteInput,
+        ip: orderIpInput.trim() || undefined,
+        notify_customer: notifyCustomer,
+      });
+      setOrderStateMsg('Order state updated');
+      refetch();
+    } catch (e: any) {
+      setOrderStateMsg(e.message || 'Failed to update order state');
+    } finally {
+      setSavingOrderState(false);
+    }
+  };
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -184,6 +229,98 @@ export default function ServiceDetail() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="border border-border p-5 bg-background mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-sm font-medium">Order &amp; Provisioning State</h3>
+            <p className="text-xs text-muted-foreground">
+              Visible to the client in their dashboard Orders tracker (requires <code className="font-mono">services.manage</code>).
+            </p>
+          </div>
+          <span className="text-xs font-mono uppercase px-2 py-0.5 border border-border">
+            {(service.order_state || 'active').replace(/_/g, ' ')}
+          </span>
+        </div>
+
+        {canManageServices ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Order State
+                </label>
+                <select
+                  aria-label="Order State"
+                  value={orderStateInput}
+                  onChange={e => setOrderStateInput(e.target.value)}
+                  className="w-full border border-border bg-background p-2.5 text-sm focus:outline-none focus:border-foreground"
+                >
+                  {ORDER_STATE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Assigned IP (optional)
+                </label>
+                <input
+                  type="text"
+                  value={orderIpInput}
+                  onChange={e => setOrderIpInput(e.target.value)}
+                  placeholder="e.g. 185.x.x.x"
+                  className="w-full border border-border bg-transparent p-2.5 text-sm font-mono focus:outline-none focus:border-foreground"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                Customer-Visible Note
+              </label>
+              <input
+                type="text"
+                value={orderNoteInput}
+                onChange={e => setOrderNoteInput(e.target.value)}
+                placeholder="e.g. Hardware allocation queued (up to 7 business days after payment)"
+                className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyCustomer}
+                  onChange={e => setNotifyCustomer(e.target.checked)}
+                  className="w-4 h-4 accent-foreground cursor-pointer"
+                />
+                Notify customer via email about this order update
+              </label>
+              <div className="flex items-center gap-3">
+                {orderStateMsg && (
+                  <span className="text-xs font-mono text-muted-foreground">{orderStateMsg}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveOrderState}
+                  disabled={savingOrderState}
+                  className="px-4 py-2 bg-foreground text-background text-xs font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+                >
+                  {savingOrderState ? 'Saving...' : 'Update Order State'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>
+              Current State: <strong className="font-mono text-foreground">{service.order_state || 'active'}</strong>
+            </div>
+            {service.order_state_note && <div>Note: {service.order_state_note}</div>}
+            <div className="text-[11px] italic">Read-only (requires services.manage permission to modify).</div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-6 mb-8">

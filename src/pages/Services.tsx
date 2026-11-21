@@ -10,6 +10,7 @@ import ServiceDetail from './ServiceDetail';
 function ServicesList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterOrderState, setFilterOrderState] = useState('all');
   const { data: services, loading, error } = useApi<Service[]>('/admin/services');
 
   const items = services || [];
@@ -20,7 +21,9 @@ function ServicesList() {
       s.hostname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || s.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    const orderState = s.order_state || 'active';
+    const matchesOrderState = filterOrderState === 'all' || orderState === filterOrderState;
+    return matchesSearch && matchesStatus && matchesOrderState;
   });
 
   return (
@@ -45,6 +48,19 @@ function ServicesList() {
             <option value="pending">Pending</option>
             <option value="terminated">Terminated</option>
           </select>
+          <select
+            value={filterOrderState}
+            onChange={e => setFilterOrderState(e.target.value)}
+            className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground w-48 shrink-0"
+          >
+            <option value="all">All Order States</option>
+            <option value="payment_received">Payment Received</option>
+            <option value="provisioning">Provisioning</option>
+            <option value="hardware_setup">Hardware Setup</option>
+            <option value="active">Active / Ready</option>
+            <option value="action_required">Action Required</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
         <Link
           to="/services/new"
@@ -59,16 +75,17 @@ function ServicesList() {
 
       {!loading && !error && (
         <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
+          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-8 text-muted-foreground">
             <div className="col-span-2">Service</div>
             <div>IP</div>
             <div>Status</div>
+            <div>Order State</div>
             <div>Price</div>
             <div>Next Due</div>
             <div className="text-right">Actions</div>
           </div>
           {filtered.map(s => (
-            <Link key={s.id} to={`/services/${s.id}`} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02] transition-colors">
+            <Link key={s.id} to={`/services/${s.id}`} className="p-4 text-sm grid grid-cols-8 items-center hover:bg-foreground/[0.02] transition-colors">
               <div className="col-span-2 flex flex-col">
                 <div className="flex items-center gap-2">
                   <Server className="w-4 h-4 text-muted-foreground" />
@@ -90,6 +107,19 @@ function ServicesList() {
                   'border-red-500/30 text-red-500'
                 }`}>
                   {s.status}
+                </span>
+              </div>
+              <div>
+                <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${
+                  (s.order_state || 'active') === 'active'
+                    ? 'border-green-500/30 text-green-500'
+                    : (s.order_state || 'active') === 'cancelled'
+                      ? 'border-red-500/30 text-red-500'
+                      : (s.order_state || 'active') === 'action_required'
+                        ? 'border-yellow-500/30 text-yellow-500'
+                        : 'border-blue-500/30 text-blue-400'
+                }`}>
+                  {(s.order_state || 'active').replace(/_/g, ' ')}
                 </span>
               </div>
               <div>€{parseFloat(s.price || '0').toFixed(2)}/mo</div>

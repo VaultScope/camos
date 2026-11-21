@@ -82,5 +82,9 @@ describe('Settings', () => {
     const secondEntries = mockApi.put.mock.calls[1][1] as Array<{ key: string; value: unknown }>;
     expect(secondEntries).toContainEqual({ key: 'smtpPass', value: 'new-smtp-secret-2026' });
     expect(secondEntries.map(e => e.key)).not.toContain('oidcClientSecret');
+    expect(secondEntries).toContainEqual({ key: 'taxMode', value: 'small_business' });
+    expect(secondEntries).toContainEqual({ key: 'reliablesite_auto_fx_enabled', value: true });
+    expect(secondEntries).toContainEqual({ key: 'reliablesite_usd_to_eur_rate', value: 0.91 });
+    expect(secondEntries).toContainEqual({ key: 'reliablesite_markup_percent', value: 15 });
   });
 });

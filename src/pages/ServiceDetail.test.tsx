@@ -9,12 +9,14 @@ vi.mock('../lib/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
     delete: vi.fn(),
   },
 }));
+const mockHasPermission = vi.fn(() => true);
 vi.mock('../lib/auth', () => ({
   getStoredClaims: () => ({ sub: 's1', email: 'a@vs.de', role: 'admin' }),
-  isAuthenticated: () => true, logout: vi.fn(), hasPermission: () => true,
+  isAuthenticated: () => true, logout: vi.fn(), hasPermission: (perm: string) => mockHasPermission(perm),
 }));
 
 import { useApi } from '../lib/hooks';
@@ -109,5 +111,47 @@ describe('ServiceDetail', () => {
     fireEvent.click(screen.getByText('Out-of-Band IPMI / KVM'));
     expect(screen.queryByText('secret-ipmi-password')).toBeNull();
     expect(screen.queryByText('10.0.0.5')).toBeNull();
+  });
+
+  it('allows admins with services.manage permission to update order state and shows read-only without permission', async () => {
+    const refetch = vi.fn();
+    mockHasPermission.mockReturnValue(true);
+    mockUseApi.mockReturnValue({
+      data: { ...mockService, order_state: 'payment_received', order_state_note: 'Queued' },
+      loading: false,
+      error: null,
+      refetch,
+    });
+    mockApi.patch.mockResolvedValueOnce({ ...mockService, order_state: 'hardware_setup' });
+
+    const ServiceDetail = (await import('./ServiceDetail')).default;
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/services/svc-1']}>
+        <Routes>
+          <Route path="/services/:id" element={<ServiceDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText('Order State'), { target: { value: 'hardware_setup' } });
+    fireEvent.click(screen.getByRole('button', { name: /Update Order State/i }));
+
+    await waitFor(() => {
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        '/admin/services/svc-1/order-state',
+        expect.objectContaining({ order_state: 'hardware_setup' })
+      );
+    });
+
+    mockHasPermission.mockImplementation((perm: string) => perm === 'services.view');
+    rerender(
+      <MemoryRouter initialEntries={['/services/svc-1']}>
+        <Routes>
+          <Route path="/services/:id" element={<ServiceDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(screen.getByText(/Requires services\.manage permission to modify/i)).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Update Order State/i })).toBeNull();
   });
 });

@@ -61,6 +61,9 @@ export interface Service {
   partner_id?: string | null;
   quota_gb?: number | null;
   cancel_at_period_end?: boolean;
+  order_state?: string;
+  order_state_note?: string | null;
+  order_state_updated_at?: string | null;
   created_at: string;
   updated_at: string;
 }
