@@ -21,6 +21,16 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, IS_TEST ? 0 : ms));
 }
 
+type MutationListener = (path: string) => void;
+const mutationListeners = new Set<MutationListener>();
+
+export function onApiMutation(listener: MutationListener) {
+  mutationListeners.add(listener);
+  return () => {
+    mutationListeners.delete(listener);
+  };
+}
+
 class ApiClient {
   private csrfToken: string | null = null;
   private csrfPromise: Promise<void> | null = null;
@@ -55,7 +65,8 @@ class ApiClient {
   }
 
   private async fetchWithRetry(path: string, init: RequestInit): Promise<Response> {
-    const maxAttempts = 3;
+    const isIdempotent = !init.method || init.method === 'GET' || init.method === 'HEAD';
+    const maxAttempts = isIdempotent ? 3 : 1;
     const isProdVaultScope = API_BASE === '/api';
     let lastError: unknown;
 
@@ -122,6 +133,10 @@ class ApiClient {
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(body.error || `API error ${res.status}`);
+    }
+
+    if (isMutating) {
+      mutationListeners.forEach((fn) => fn(path));
     }
 
     return res.json();

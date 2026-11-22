@@ -1,13 +1,15 @@
+const UNSAFE_URL_CHARS = /[\u0000-\u001F\u007F\\]/;
+
 /**
  * Validates that a URL uses an explicit http: or https: scheme.
  */
 export function isSafeHttpUrl(raw: string | null | undefined): boolean {
   if (!raw) return false;
   const trimmed = raw.trim();
-  if (!trimmed) return false;
+  if (!trimmed || UNSAFE_URL_CHARS.test(trimmed)) return false;
   try {
     const parsed = new URL(trimmed);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && !parsed.username && !parsed.password;
   } catch {
     return false;
   }
@@ -20,23 +22,41 @@ export function isSafeHttpUrl(raw: string | null | undefined): boolean {
 export function isSafeContentUrl(raw: string | null | undefined): boolean {
   if (!raw) return false;
   const trimmed = raw.trim();
-  if (!trimmed) return false;
+  if (!trimmed || UNSAFE_URL_CHARS.test(trimmed)) return false;
   if (trimmed.startsWith('/')) {
-    return !trimmed.startsWith('//') && !trimmed.startsWith('/\\');
+    if (trimmed.startsWith('//')) return false;
+    try {
+      const parsed = new URL(trimmed, 'https://sentinel.invalid');
+      return parsed.origin === 'https://sentinel.invalid' && !parsed.pathname.includes('..');
+    } catch {
+      return false;
+    }
   }
   return isSafeHttpUrl(trimmed);
 }
 
 /**
- * Sanitizes ticket attachment URLs, allowing https://, http://, or relative /uploads/ and /api/ paths only.
+ * Sanitizes ticket attachment URLs, allowing https://, http://, or normalized relative /uploads/ and /api/uploads/ paths only.
  * Returns null if the URL uses an unsafe scheme or disallowed path.
  */
 export function sanitizeSafeUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('/api/')) {
-    return trimmed;
+  if (!trimmed || UNSAFE_URL_CHARS.test(trimmed)) return null;
+  if (trimmed.startsWith('/')) {
+    if (trimmed.startsWith('//') || trimmed.includes('..')) return null;
+    try {
+      const parsed = new URL(trimmed, 'https://sentinel.invalid');
+      if (
+        parsed.origin === 'https://sentinel.invalid' &&
+        (parsed.pathname.startsWith('/uploads/') || parsed.pathname.startsWith('/api/'))
+      ) {
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      return null;
+    }
+    return null;
   }
   if (isSafeHttpUrl(trimmed)) {
     return trimmed;
@@ -53,10 +73,15 @@ const ALLOWED_WYSIWYG_PROTOCOLS = ['http:', 'https:', 'mailto:'];
 export function isAllowedWysiwygLinkUri(url: string | null | undefined): boolean {
   if (!url) return false;
   const trimmed = url.trim();
-  if (!trimmed || trimmed.startsWith('//')) return false;
+  if (!trimmed || trimmed.startsWith('//') || UNSAFE_URL_CHARS.test(trimmed)) return false;
   try {
     const parsed = new URL(trimmed);
-    return ALLOWED_WYSIWYG_PROTOCOLS.includes(parsed.protocol.toLowerCase());
+    const protocol = parsed.protocol.toLowerCase();
+    if (!ALLOWED_WYSIWYG_PROTOCOLS.includes(protocol)) return false;
+    if ((protocol === 'http:' || protocol === 'https:') && (!parsed.hostname || parsed.username || parsed.password)) {
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Page } from '../../components/Layout';
 import { api } from '../../lib/api';
+import { isSafeContentUrl } from '../../lib/url';
 
 interface BlogPostItem {
   id: string;
@@ -96,7 +97,7 @@ export default function BlogList() {
 
           <button
             onClick={() => navigate('/blog/new')}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors shadow-sm cursor-pointer shrink-0"
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Create Article</span>
@@ -104,40 +105,40 @@ export default function BlogList() {
         </div>
 
         {/* Quick KPI Counters */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-card border border-border p-4 rounded-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-xs">
             <span className="text-xs font-mono uppercase text-muted-foreground block">Total Articles</span>
-            <span className="text-2xl font-bold text-foreground mt-1 block">{stats.total}</span>
+            <span className="text-2xl font-bold text-foreground mt-1 block tabular-nums">{stats.total}</span>
           </div>
-          <div className="bg-card border border-border p-4 rounded-lg">
+          <div className="bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-xs">
             <span className="text-xs font-mono uppercase text-green-500 block">Published</span>
-            <span className="text-2xl font-bold text-foreground mt-1 block">{stats.published}</span>
+            <span className="text-2xl font-bold text-foreground mt-1 block tabular-nums">{stats.published}</span>
           </div>
-          <div className="bg-card border border-border p-4 rounded-lg">
+          <div className="bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-xs">
             <span className="text-xs font-mono uppercase text-amber-500 block">Drafts</span>
-            <span className="text-2xl font-bold text-foreground mt-1 block">{stats.drafts}</span>
+            <span className="text-2xl font-bold text-foreground mt-1 block tabular-nums">{stats.drafts}</span>
           </div>
         </div>
 
         {/* Filters and Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search by title, slug, tag, author..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
+              className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 transition-colors"
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {(['all', 'published', 'draft'] as const).map(st => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono capitalize transition-colors cursor-pointer border ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono capitalize transition-colors cursor-pointer border ${
                   statusFilter === st
                     ? 'bg-foreground text-background font-semibold border-foreground'
                     : 'bg-card border-border text-muted-foreground hover:text-foreground'
@@ -150,7 +151,7 @@ export default function BlogList() {
         </div>
 
         {/* Fully Responsive & Wide Data Table */}
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-card border border-border rounded-2xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[1000px] divide-y divide-border text-sm">
               <thead className="bg-muted/40 text-xs font-mono uppercase text-muted-foreground tracking-wider">
@@ -190,7 +191,7 @@ export default function BlogList() {
                       {/* Title & Excerpt */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-start gap-2.5">
-                          {post.image_url ? (
+                          {post.image_url && isSafeContentUrl(post.image_url) ? (
                             <img
                               src={post.image_url}
                               alt=""

@@ -40,6 +40,7 @@ import DOMPurify from 'dompurify';
 import { api } from '../../lib/api';
 import { isSafeContentUrl } from '../../lib/url';
 import { useToast } from '../../components/Toast';
+import { TopNav } from '../../components/Layout';
 
 // Configure marked for GitHub-flavored markdown
 marked.setOptions({
@@ -124,7 +125,7 @@ export default function BlogEdit() {
   // Fetch post if editing existing post
   useEffect(() => {
     if (!isNew && id) {
-      api.get<any>(`/admin/blog/${id}`)
+      api.get<any>(`/admin/blog/${encodeURIComponent(id)}`)
         .then(post => {
           setTitle(post.title || '');
           setSlug(post.slug || '');
@@ -278,6 +279,13 @@ export default function BlogEdit() {
   const [uploadingEditorImage, setUploadingEditorImage] = useState(false);
 
   const uploadImageFile = async (file: File): Promise<string> => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Only PNG, JPEG, and WebP images are supported');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('Image file size must not exceed 10 MB');
+    }
     const formData = new FormData();
     formData.append('file', file);
     formData.append('subfolder', 'blog');
@@ -386,7 +394,9 @@ export default function BlogEdit() {
     try {
       const rawHtml = marked.parse(content) as string;
       return DOMPurify.sanitize(rawHtml, {
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i,
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?![/\\]))/i,
+        FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'object', 'embed', 'svg', 'math'],
+        FORBID_ATTR: ['style', 'srcdoc', 'formaction'],
       });
     } catch {
       return '<p class="text-red-500">Error parsing markdown.</p>';
@@ -464,15 +474,20 @@ export default function BlogEdit() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[400px] text-muted-foreground space-y-3">
-        <RefreshCw className="w-6 h-6 animate-spin text-primary" />
-        <p className="text-sm font-mono">Loading blog post details...</p>
+      <div className="lg:ml-64 min-h-dvh flex flex-col">
+        <TopNav title="Blog Editor" />
+        <div className="p-8 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[400px] text-muted-foreground space-y-3">
+          <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+          <p className="text-sm font-mono">Loading blog post details...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="lg:ml-64 min-h-dvh flex flex-col min-w-0">
+      <TopNav title={isNew ? 'Create Blog Article' : 'Edit Blog Article'} />
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
       {/* Top Header & Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div className="space-y-1">
@@ -585,7 +600,7 @@ export default function BlogEdit() {
       )}
 
       {/* Post Metadata Card */}
-      <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Title */}
           <div className="lg:col-span-8 space-y-1.5">
@@ -812,7 +827,7 @@ export default function BlogEdit() {
       </div>
 
       {/* Editor & Preview Workspace */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-card border border-border rounded-2xl shadow-xs overflow-hidden flex flex-col">
         {/* Markdown Toolbar */}
         <div className="border-b border-border bg-foreground/[0.02] p-2 flex flex-wrap items-center justify-between gap-1.5">
           <div className="flex flex-wrap items-center gap-1">
@@ -1091,8 +1106,8 @@ export default function BlogEdit() {
         </div>
 
         {/* Metrics Status Bar */}
-        <div className="border-t border-border bg-foreground/[0.02] px-4 py-2.5 flex flex-wrap items-center justify-between text-xs font-mono text-muted-foreground">
-          <div className="flex items-center gap-4">
+        <div className="border-t border-border bg-foreground/[0.02] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4">
             <span>{metrics.wordCount} words</span>
             <span>{metrics.charCount} chars</span>
             <span>{metrics.lineCount} lines</span>
@@ -1106,6 +1121,7 @@ export default function BlogEdit() {
             </span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

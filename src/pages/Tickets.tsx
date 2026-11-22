@@ -87,9 +87,9 @@ function TicketsDepartments() {
 
   return (
     <Page title="Support Departments" requiredPermission="tickets.manage">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <p className="text-sm text-muted-foreground">Manage ticket departments and their associated email pipelines.</p>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors cursor-pointer">
+        <button onClick={() => handleOpenModal()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0">
           <Plus className="w-4 h-4" /> Add Department
         </button>
       </div>
@@ -98,37 +98,41 @@ function TicketsDepartments() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load departments: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
-            <div className="col-span-2">Department Name</div>
-            <div>Mailbox</div>
-            <div>Default Assignee</div>
-            <div className="text-right">Actions</div>
-          </div>
-          {(departments || []).map(d => (
-            <div key={d.id} className="p-4 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.02]">
-              <div className="col-span-2 font-medium">{d.name}</div>
-              <div className="text-muted-foreground font-mono text-xs">{d.mailbox}</div>
-              <div className="text-muted-foreground">{getStaffName(d.default_assignee_id)}</div>
-              <div className="text-right space-x-2">
-                <button onClick={() => handleOpenModal(d)} className="text-xs px-2 py-1 border border-border hover:bg-foreground/5">
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(d.id, d.name)} className="text-xs px-2 py-1 border border-red-500/30 text-red-500 hover:bg-red-500/5">
-                  Delete
-                </button>
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
+                <div className="col-span-2">Department Name</div>
+                <div>Mailbox</div>
+                <div>Default Assignee</div>
+                <div className="text-right">Actions</div>
               </div>
+              {(departments || []).map(d => (
+                <div key={d.id} className="p-4 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.025] transition-colors">
+                  <div className="col-span-2 font-medium">{d.name}</div>
+                  <div className="text-muted-foreground font-mono text-xs truncate pr-2">{d.mailbox}</div>
+                  <div className="text-muted-foreground truncate pr-2">{getStaffName(d.default_assignee_id)}</div>
+                  <div className="text-right space-x-1.5">
+                    <button onClick={() => handleOpenModal(d)} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 cursor-pointer">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDelete(d.id, d.name)} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(departments || []).length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">No departments yet.</div>
+              )}
             </div>
-          ))}
-          {(departments || []).length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">No departments yet.</div>
-          )}
+          </div>
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border border-border p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-6 max-w-md w-full max-h-[90dvh] overflow-y-auto animate-ui-scale">
             <h3 className="text-lg font-medium mb-4">{editingId ? 'Edit Department' : 'New Department'}</h3>
             <div className="space-y-4">
               <div>
@@ -137,7 +141,7 @@ function TicketsDepartments() {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   placeholder="e.g. General Support"
                 />
               </div>
@@ -147,7 +151,7 @@ function TicketsDepartments() {
                   type="email"
                   value={form.mailbox}
                   onChange={e => setForm({...form, mailbox: e.target.value})}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   placeholder="e.g. support@example.com"
                 />
               </div>
@@ -156,7 +160,7 @@ function TicketsDepartments() {
                 <select
                   value={form.default_assignee_id}
                   onChange={e => setForm({...form, default_assignee_id: e.target.value})}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   <option value="">Unassigned</option>
                   {(staff || []).map(s => (
@@ -165,12 +169,12 @@ function TicketsDepartments() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSave} disabled={!form.name.trim() || !form.mailbox.trim() || saving} className="px-4 py-2 bg-foreground text-background text-sm hover:bg-foreground/90 disabled:opacity-50 cursor-pointer">
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5">
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5 cursor-pointer">
                 Cancel
+              </button>
+              <button onClick={handleSave} disabled={!form.name.trim() || !form.mailbox.trim() || saving} className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer">
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -211,19 +215,19 @@ function TicketsList() {
 
   return (
     <Page title="Support Tickets" requiredPermission="tickets.view">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-3 flex-1 max-w-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 bg-card border border-border rounded-2xl p-3 shadow-xs">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
           <input
             type="text"
             placeholder="Search by subject or ticket number..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full sm:flex-1 rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           />
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground w-44 shrink-0"
+            className="rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 sm:w-44 shrink-0 cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="open">Open</option>
@@ -232,18 +236,18 @@ function TicketsList() {
             <option value="closed">Closed</option>
           </select>
         </div>
-        <Link to="/tickets/new" className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors">
+        <Link to="/tickets/new" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors shrink-0">
           <Plus className="w-4 h-4" /> New Ticket
         </Link>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 text-xs font-medium uppercase tracking-wider border transition-colors cursor-pointer ${
-              activeTab === tab.key ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium uppercase tracking-wider border transition-colors cursor-pointer shrink-0 ${
+              activeTab === tab.key ? 'bg-foreground text-background border-foreground' : 'bg-card border-border text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.label} <span className="ml-1 opacity-60">{tab.count}</span>
@@ -255,63 +259,67 @@ function TicketsList() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load tickets: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
-            <div>Number</div>
-            <div className="col-span-2">Subject & Service</div>
-            <div>Category</div>
-            <div>Priority</div>
-            <div>Status</div>
-            <div className="text-right">Created</div>
-          </div>
-          {filtered.map(t => (
-            <Link key={t.id} to={`/tickets/${t.id}`} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.02] transition-colors">
-              <div className="font-mono text-xs">{t.ticket_number}</div>
-              <div className="col-span-2 flex flex-col pr-2">
-                <span className="font-medium truncate">{t.subject}</span>
-                {t.related_service_id && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-400 mt-0.5">
-                    <Server className="w-3 h-3" />
-                    {services?.find(s => s.id === t.related_service_id)?.name || 'Linked Service'}
-                  </span>
-                )}
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-7 text-muted-foreground">
+                <div>Number</div>
+                <div className="col-span-2">Subject & Service</div>
+                <div>Category</div>
+                <div>Priority</div>
+                <div>Status</div>
+                <div className="text-right">Created</div>
               </div>
-              <div>
-                <span className={`text-[10px] px-2 py-0.5 border uppercase ${
-                  t.category === 'abuse' ? 'border-red-500/30 text-red-500' :
-                  t.category === 'dmca' ? 'border-purple-500/30 text-purple-500' :
-                  'border-border text-muted-foreground'
-                }`}>
-                  {t.category}
-                </span>
-              </div>
-              <div>
-                <span className={`text-[10px] px-2 py-0.5 border uppercase ${
-                  t.priority === 'critical' ? 'border-red-500/30 text-red-500' :
-                  t.priority === 'high' ? 'border-yellow-500/30 text-yellow-500' :
-                  'border-border text-muted-foreground'
-                }`}>
-                  {t.priority}
-                </span>
-              </div>
-              <div>
-                <span className={`text-[10px] px-2 py-0.5 border uppercase ${
-                  t.status === 'open' ? 'border-yellow-500/30 text-yellow-500' :
-                  t.status === 'in_progress' ? 'border-blue-500/30 text-blue-500' :
-                  t.status === 'closed' ? 'border-border text-muted-foreground' :
-                  'border-orange-500/30 text-orange-500'
-                }`}>
-                  {t.status.replace('_', ' ')}
-                </span>
-              </div>
-              <div className="text-right text-xs text-muted-foreground">{t.created_at?.split('T')[0]}</div>
-            </Link>
-          ))}
-          {filtered.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              {items.length === 0 ? 'No tickets yet.' : 'No tickets match your filters.'}
+              {filtered.map(t => (
+                <Link key={t.id} to={`/tickets/${t.id}`} className="p-4 text-sm grid grid-cols-7 items-center hover:bg-foreground/[0.025] transition-colors">
+                  <div className="font-mono text-xs">{t.ticket_number}</div>
+                  <div className="col-span-2 flex flex-col pr-2 min-w-0">
+                    <span className="font-medium truncate">{t.subject}</span>
+                    {t.related_service_id && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono text-blue-400 mt-0.5 truncate">
+                        <Server className="w-3 h-3 shrink-0" />
+                        {services?.find(s => s.id === t.related_service_id)?.name || 'Linked Service'}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${
+                      t.category === 'abuse' ? 'border-red-500/30 bg-red-500/10 text-red-500' :
+                      t.category === 'dmca' ? 'border-purple-500/30 bg-purple-500/10 text-purple-500' :
+                      'border-border bg-foreground/5 text-muted-foreground'
+                    }`}>
+                      {t.category}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${
+                      t.priority === 'critical' ? 'border-red-500/30 bg-red-500/10 text-red-500' :
+                      t.priority === 'high' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-500' :
+                      'border-border bg-foreground/5 text-muted-foreground'
+                    }`}>
+                      {t.priority}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${
+                      t.status === 'open' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-500' :
+                      t.status === 'in_progress' ? 'border-blue-500/30 bg-blue-500/10 text-blue-500' :
+                      t.status === 'closed' ? 'border-border bg-foreground/5 text-muted-foreground' :
+                      'border-orange-500/30 bg-orange-500/10 text-orange-500'
+                    }`}>
+                      {t.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="text-right text-xs font-mono text-muted-foreground">{t.created_at?.split('T')[0]}</div>
+                </Link>
+              ))}
+              {filtered.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  {items.length === 0 ? 'No tickets yet.' : 'No tickets match your filters.'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </Page>
@@ -322,9 +330,10 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'] 
 
 function TicketDetail() {
   const { id } = useParams();
-  const { data: ticket, loading, error, refetch } = useApi<Ticket>(`/admin/tickets/${id}`);
-  const { data: messages, refetch: refetchMessages } = useApi<TicketMessage[]>(`/admin/tickets/${id}/messages`);
-  const { data: customerServices } = useApi<Service[]>(ticket?.customer_id ? `/admin/services?customer_id=${ticket.customer_id}` : null);
+  const encodedId = id ? encodeURIComponent(id) : '';
+  const { data: ticket, loading, error, refetch } = useApi<Ticket>(encodedId ? `/admin/tickets/${encodedId}` : '');
+  const { data: messages, refetch: refetchMessages } = useApi<TicketMessage[]>(encodedId ? `/admin/tickets/${encodedId}/messages` : '');
+  const { data: customerServices } = useApi<Service[]>(ticket?.customer_id ? `/admin/services?customer_id=${encodeURIComponent(ticket.customer_id)}` : null);
   const toast = useToast();
   const [replyText, setReplyText] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -369,7 +378,7 @@ function TicketDetail() {
         const ticket = res?.ticket;
         if (cancelled || !ticket) return;
 
-        const eventSourceUrl = `${API_BASE}/admin/tickets/${id}/events?ticket=${encodeURIComponent(ticket)}`;
+        const eventSourceUrl = `${API_BASE}/admin/tickets/${encodeURIComponent(id)}/events?ticket=${encodeURIComponent(ticket)}`;
         es = new window.EventSource(eventSourceUrl, { withCredentials: true });
 
         es.onopen = () => {
@@ -444,7 +453,7 @@ function TicketDetail() {
       for (const file of validFiles) {
         const formData = new FormData();
         formData.append('file', file);
-        const uploaded = await api.post<TicketAttachment>(`/admin/tickets/${id}/attachments`, formData);
+        const uploaded = await api.post<TicketAttachment>(`/admin/tickets/${encodeURIComponent(id)}/attachments`, formData);
         setAttachments(prev => [...prev, uploaded]);
       }
     } catch (err: any) {
@@ -463,7 +472,7 @@ function TicketDetail() {
     if ((!replyText.trim() && attachments.length === 0) || sending || uploading) return;
     setSending(true);
     try {
-      const newMsg = await api.post<TicketMessage>(`/admin/tickets/${id}/messages`, {
+      const newMsg = await api.post<TicketMessage>(`/admin/tickets/${encodeURIComponent(id!)}/messages`, {
         content: replyText.trim() || 'Attached image(s)',
         internal: isInternal,
         attachments: attachments,
@@ -505,25 +514,25 @@ function TicketDetail() {
         <ArrowLeft className="w-4 h-4" /> All Tickets
       </Link>
 
-      <div className="border border-border bg-background divide-y divide-border">
-        <div className="p-6">
+      <div className="rounded-2xl border border-border bg-card shadow-xs divide-y divide-border overflow-hidden">
+        <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-medium">{ticket.subject}</h2>
-                <span className={`text-[10px] px-2 py-0.5 border uppercase ${ticket.status === 'open' ? 'border-green-500/30 text-green-500' : ticket.status === 'in_progress' ? 'border-blue-500/30 text-blue-500' : ticket.status === 'waiting_customer' ? 'border-yellow-500/30 text-yellow-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                <h2 className="text-lg sm:text-xl font-medium">{ticket.subject}</h2>
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${ticket.status === 'open' ? 'border-green-500/30 bg-green-500/10 text-green-500' : ticket.status === 'in_progress' ? 'border-blue-500/30 bg-blue-500/10 text-blue-500' : ticket.status === 'waiting_customer' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
                   {ticket.status.replace('_', ' ')}
                 </span>
-                <span className={`text-[10px] px-2 py-0.5 border uppercase ${ticket.priority === 'critical' ? 'border-red-500/30 text-red-500' : ticket.priority === 'high' ? 'border-orange-500/30 text-orange-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${ticket.priority === 'critical' ? 'border-red-500/30 bg-red-500/10 text-red-500' : ticket.priority === 'high' ? 'border-orange-500/30 bg-orange-500/10 text-orange-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
                   {ticket.priority}
                 </span>
                 {isLive && (
-                  <span className="text-green-500 flex items-center gap-1.5 font-mono text-[10px] border border-green-500/30 px-2 py-0.5">
+                  <span className="text-green-500 flex items-center gap-1.5 font-mono text-[10px] rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
                   </span>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground space-x-3">
+              <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 <span>#{ticket.ticket_number}</span>
                 <span>•</span>
                 <span className="capitalize">{ticket.category}</span>
@@ -534,7 +543,7 @@ function TicketDetail() {
           </div>
 
           {/* Quick Management Controls */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border flex-wrap text-xs">
+          <div className="flex items-center gap-3 sm:gap-4 mt-4 pt-4 border-t border-border flex-wrap text-xs">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <span>Status:</span>
               <select
@@ -544,7 +553,7 @@ function TicketDetail() {
                   toast.success('Status updated');
                   refetch();
                 }}
-                className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground"
+                className="rounded-xl bg-background border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-foreground"
               >
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
@@ -562,7 +571,7 @@ function TicketDetail() {
                   toast.success('Priority updated');
                   refetch();
                 }}
-                className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground"
+                className="rounded-xl bg-background border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-foreground"
               >
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
@@ -582,7 +591,7 @@ function TicketDetail() {
                     toast.success('Linked service updated');
                     refetch();
                   }}
-                  className="bg-background border border-border px-2 py-1 text-xs focus:outline-none focus:border-foreground max-w-xs"
+                  className="rounded-xl bg-background border border-border px-2.5 py-1.5 text-xs focus:outline-none focus:border-foreground max-w-xs"
                 >
                   <option value="">None / Unlinked</option>
                   {customerServices.map(s => (
@@ -596,28 +605,28 @@ function TicketDetail() {
 
         {/* Linked Service Banner */}
         {ticket.related_service_id && (
-          <div className="p-4 bg-foreground/[0.02] flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 border border-border bg-background">
+          <div className="p-4 sm:px-6 bg-foreground/[0.025] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-xl border border-border bg-background shrink-0">
                 <Server className="w-5 h-5 text-blue-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Linked Customer Service</div>
-                <div className="text-sm font-medium flex items-center gap-2">
+                <div className="text-sm font-medium flex flex-wrap items-center gap-2">
                   <span>{linkedSvc?.name || 'Service #' + ticket.related_service_id.slice(0, 8)}</span>
                   {linkedSvc && (
                     <>
                       <span className="text-xs font-mono text-muted-foreground">({linkedSvc.hostname || linkedSvc.ip || linkedSvc.provider_resource_id})</span>
-                      <span className="text-[10px] px-1.5 py-0.5 border border-border uppercase font-mono text-green-500">{linkedSvc.status}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-border uppercase font-mono text-green-500">{linkedSvc.status}</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Link
                 to={`/services/${ticket.related_service_id}`}
-                className="px-3 py-1.5 border border-border text-xs hover:bg-foreground/5 inline-flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl border border-border text-xs hover:bg-foreground/5 inline-flex items-center gap-1"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> View Service
               </Link>
@@ -627,7 +636,7 @@ function TicketDetail() {
                   toast.success('Service unlinked');
                   refetch();
                 }}
-                className="px-2 py-1.5 border border-border text-xs text-muted-foreground hover:text-red-500 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-xl border border-border text-xs text-muted-foreground hover:text-red-500 cursor-pointer"
                 title="Unlink service"
               >
                 Unlink
@@ -636,18 +645,18 @@ function TicketDetail() {
           </div>
         )}
 
-        <div className="p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4">
           {thread.length === 0 && (
             <div className="text-sm text-muted-foreground text-center py-8">No messages yet.</div>
           )}
           {thread.map(msg => (
-            <div key={msg.id} className={`p-4 border border-border ${msg.internal ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-background'}`}>
+            <div key={msg.id} className={`p-4 rounded-2xl border ${msg.internal ? 'bg-yellow-500/5 border-yellow-500/30' : 'border-border bg-background'}`}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium capitalize">{msg.author_type}</span>
-                {msg.internal && <span className="text-[10px] px-1.5 py-0.5 border border-yellow-500/30 text-yellow-500 uppercase">Internal</span>}
-                <span className="text-xs text-muted-foreground ml-auto">{msg.created_at.replace('T', ' ').slice(0, 16)}</span>
+                {msg.internal && <span className="text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30 text-yellow-500 uppercase">Internal</span>}
+                <span className="text-xs text-muted-foreground ml-auto font-mono">{msg.created_at.replace('T', ' ').slice(0, 16)}</span>
               </div>
-              <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+              <div className="text-sm whitespace-pre-wrap break-words">{msg.content}</div>
 
               {/* Inline Attachments */}
               {msg.attachments && msg.attachments.length > 0 && (
@@ -762,13 +771,13 @@ function TicketDetail() {
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
               rows={3}
-              className="flex-1 border border-border bg-transparent p-3 text-sm focus:outline-none focus:border-foreground resize-none"
+              className="flex-1 rounded-xl border border-border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 resize-none"
               placeholder={isInternal ? 'Add internal note (not visible to customer)...' : 'Type your reply...'}
             />
             <button
               onClick={handleSendReply}
               disabled={(!replyText.trim() && attachments.length === 0) || sending || uploading}
-              className="px-4 self-end border border-border bg-foreground text-background text-sm py-2 hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+              className="px-4 self-end rounded-xl border border-border bg-foreground text-background text-sm py-2.5 hover:bg-foreground/90 disabled:opacity-50 cursor-pointer transition-colors"
             >
               {sending ? '...' : <Send className="w-4 h-4" />}
             </button>
@@ -850,14 +859,14 @@ function TicketsNew() {
         <ArrowLeft className="w-4 h-4" /> All Tickets
       </Link>
 
-      <form onSubmit={handleSubmit} className="border border-border bg-background p-6 max-w-2xl space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card shadow-xs p-5 sm:p-6 max-w-2xl space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Customer *</label>
           <select
             value={form.customer_id}
             onChange={e => setForm({...form, customer_id: e.target.value})}
             required
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           >
             <option value="">Select customer...</option>
             {(customers || []).map(c => (
@@ -871,7 +880,7 @@ function TicketsNew() {
           <select
             value={form.related_service_id}
             onChange={e => setForm({...form, related_service_id: e.target.value})}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           >
             <option value="">None / General Inquiry</option>
             {(customerServices || []).map(s => (
@@ -885,7 +894,7 @@ function TicketsNew() {
           <select
             value={departmentId}
             onChange={e => handleDepartmentChange(e.target.value)}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           >
             <option value="">Select department...</option>
             {(departments || []).map(d => (
@@ -894,13 +903,13 @@ function TicketsNew() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Category</label>
             <select
               value={form.category}
               onChange={e => setForm({...form, category: e.target.value as typeof form.category})}
-              className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+              className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
             >
               <option value="support">Support</option>
               <option value="abuse">Abuse</option>
@@ -913,7 +922,7 @@ function TicketsNew() {
             <select
               value={form.priority}
               onChange={e => setForm({...form, priority: e.target.value as typeof form.priority})}
-              className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+              className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
             >
               <option value="low">Low</option>
               <option value="normal">Normal</option>
@@ -930,18 +939,18 @@ function TicketsNew() {
             value={form.subject}
             onChange={e => setForm({...form, subject: e.target.value})}
             required
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
             placeholder="Brief description of the issue..."
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">First Message</label>
           <textarea
             value={firstMessage}
             onChange={e => setFirstMessage(e.target.value)}
             rows={4}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
             placeholder="Type the first message..."
           />
         </div>
@@ -951,7 +960,7 @@ function TicketsNew() {
           <select
             value={form.assignee_id}
             onChange={e => setForm({...form, assignee_id: e.target.value})}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           >
             <option value="">Unassigned</option>
             {(staff || []).map(s => (
@@ -966,15 +975,15 @@ function TicketsNew() {
             type="email"
             value={form.mailbox}
             onChange={e => setForm({...form, mailbox: e.target.value})}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           />
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={!form.customer_id || !form.subject.trim() || creating} className="px-4 py-2 bg-foreground text-background text-sm hover:bg-foreground/90 disabled:opacity-50 cursor-pointer">
+          <button type="submit" disabled={!form.customer_id || !form.subject.trim() || creating} className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer">
             {creating ? 'Creating...' : 'Create Ticket'}
           </button>
-          <Link to="/tickets" className="px-4 py-2 border border-border text-sm hover:bg-foreground/5">
+          <Link to="/tickets" className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5">
             Cancel
           </Link>
         </div>

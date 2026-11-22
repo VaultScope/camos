@@ -35,9 +35,11 @@ export default function CouponsPage() {
 
   const handleGenerateCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
     let code = '';
     for (let i = 0; i < 8; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
+      code += chars[bytes[i] % chars.length];
     }
     setForm({ ...form, code });
   };
@@ -113,28 +115,28 @@ export default function CouponsPage() {
 
   return (
     <Page title="Coupons" requiredPermission="coupons.manage">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <p className="text-sm text-muted-foreground">Manage discount codes and promotional offers.</p>
         <button
           onClick={handleOpenModal}
-          className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" /> Create Coupon
         </button>
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5 bg-card border border-border rounded-2xl p-3 shadow-xs">
         <input
           type="text"
           placeholder="Search coupons..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="flex-1 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          className="flex-1 rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          className="rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 sm:w-44 cursor-pointer"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -148,56 +150,60 @@ export default function CouponsPage() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load coupons: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-6 text-muted-foreground">
-            <div>Code</div>
-            <div>Discount</div>
-            <div>Type</div>
-            <div>Usage</div>
-            <div>Expires</div>
-            <div className="text-right">Actions</div>
-          </div>
-          {filteredCoupons.map(c => (
-            <div key={c.id} className="p-4 text-sm grid grid-cols-6 items-center hover:bg-foreground/[0.02]">
-              <div className="flex items-center gap-2 font-mono font-medium">
-                <Tag className="w-4 h-4 text-muted-foreground" /> {c.code}
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[680px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-6 text-muted-foreground">
+                <div>Code</div>
+                <div>Discount</div>
+                <div>Type</div>
+                <div>Usage</div>
+                <div>Expires</div>
+                <div className="text-right">Actions</div>
               </div>
-              <div>{formatDiscount(c)}</div>
-              <div className="capitalize text-muted-foreground">{c.discount_type}</div>
-              <div className="font-mono text-xs">{formatUsage(c)}</div>
-              <div className="text-muted-foreground text-xs">{formatExpiry(c)}</div>
-              <div className="text-right space-x-2">
-                <button
-                  onClick={() => handleToggleStatus(c.id, c.status)}
-                  className={`text-xs px-2 py-1 border ${
-                    c.status === 'active'
-                      ? 'border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/5'
-                      : 'border-green-500/30 text-green-500 hover:bg-green-500/5'
-                  }`}
-                >
-                  {c.status === 'active' ? 'Disable' : 'Enable'}
-                </button>
-                <button
-                  onClick={() => handleDelete(c.id, c.code)}
-                  className="text-xs px-2 py-1 border border-red-500/30 text-red-500 hover:bg-red-500/5"
-                >
-                  Delete
-                </button>
-              </div>
+              {filteredCoupons.map(c => (
+                <div key={c.id} className="p-4 text-sm grid grid-cols-6 items-center hover:bg-foreground/[0.025] transition-colors">
+                  <div className="flex items-center gap-2 font-mono font-medium">
+                    <Tag className="w-4 h-4 text-muted-foreground shrink-0" /> {c.code}
+                  </div>
+                  <div>{formatDiscount(c)}</div>
+                  <div className="capitalize text-muted-foreground">{c.discount_type}</div>
+                  <div className="font-mono text-xs">{formatUsage(c)}</div>
+                  <div className="text-muted-foreground text-xs">{formatExpiry(c)}</div>
+                  <div className="text-right flex items-center justify-end gap-1.5">
+                    <button
+                      onClick={() => handleToggleStatus(c.id, c.status)}
+                      className={`text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
+                        c.status === 'active'
+                          ? 'border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10'
+                          : 'border-green-500/30 text-green-500 hover:bg-green-500/10'
+                      }`}
+                    >
+                      {c.status === 'active' ? 'Disable' : 'Enable'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c.id, c.code)}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredCoupons.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">No coupons match your filters.</div>
+              )}
             </div>
-          ))}
-          {filteredCoupons.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">No coupons match your filters.</div>
-          )}
+          </div>
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border border-border p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-6 max-w-md w-full max-h-[90dvh] overflow-y-auto animate-ui-scale">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Create Coupon</h3>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -210,12 +216,12 @@ export default function CouponsPage() {
                     type="text"
                     value={form.code}
                     onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                    className="flex-1 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                    className="flex-1 rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                     placeholder="SUMMER2026"
                   />
                   <button
                     onClick={handleGenerateCode}
-                    className="px-3 border border-border hover:bg-foreground/5"
+                    className="px-3 rounded-xl border border-border hover:bg-foreground/5 cursor-pointer"
                     title="Generate random code"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -228,7 +234,7 @@ export default function CouponsPage() {
                 <select
                   value={form.discount_type}
                   onChange={e => setForm({ ...form, discount_type: e.target.value as 'percentage' | 'fixed' })}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   <option value="percentage">Percentage</option>
                   <option value="fixed">Fixed Amount</option>
@@ -244,7 +250,7 @@ export default function CouponsPage() {
                   value={form.discount_value}
                   onChange={e => setForm({ ...form, discount_value: parseFloat(e.target.value) || 0 })}
                   step={form.discount_type === 'percentage' ? '1' : '0.01'}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
 
@@ -254,7 +260,7 @@ export default function CouponsPage() {
                   type="number"
                   value={form.usage_limit || ''}
                   onChange={e => setForm({ ...form, usage_limit: e.target.value ? parseInt(e.target.value) : undefined })}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   placeholder="Unlimited"
                 />
               </div>
@@ -265,21 +271,21 @@ export default function CouponsPage() {
                   type="datetime-local"
                   value={form.expires_at}
                   onChange={e => setForm({ ...form, expires_at: e.target.value })}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5 cursor-pointer">
+                Cancel
+              </button>
               <button
                 onClick={handleSave}
                 disabled={!form.code.trim() || saving}
-                className="px-4 py-2 bg-foreground text-background text-sm hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
               >
                 {saving ? 'Creating...' : 'Create Coupon'}
-              </button>
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5">
-                Cancel
               </button>
             </div>
           </div>

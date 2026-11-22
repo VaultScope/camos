@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -23,6 +23,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useExplainMode } from './HelpTooltip';
+import { prefetchRoute } from '../lib/routePrefetch';
+import { hasPermission } from '../lib/auth';
 
 interface CommandItem {
   id: string;
@@ -33,6 +35,7 @@ interface CommandItem {
   icon: React.ComponentType<{ className?: string }>;
   action?: () => void;
   keywords?: string[];
+  permission?: string;
 }
 
 interface CommandPaletteProps {
@@ -47,76 +50,74 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const navigate = useNavigate();
   const { toggleExplainMode, explainMode } = useExplainMode();
 
-  const commands: CommandItem[] = [
-    // Pages
-    { id: 'dash', name: 'Dashboard', description: 'Real-time telemetry, MRR & node health', category: 'Pages', path: '/', icon: Activity, keywords: ['overview', 'mrr', 'stats'] },
-    { id: 'notif', name: 'Notifications', description: 'System alerts and events', category: 'Pages', path: '/notifications', icon: Bell },
-    { id: 'reports', name: 'Reports & Revenue', description: 'Financial metrics & growth analysis', category: 'Pages', path: '/reports', icon: BarChart3, keywords: ['finance', 'revenue', 'analytics'] },
-    { id: 'customers', name: 'Customer Accounts', description: 'Client profiles, emails & services', category: 'Pages', path: '/customers', icon: Users, keywords: ['users', 'clients'] },
-    { id: 'tickets', name: 'Support Tickets', description: 'Customer tickets & helpdesk', category: 'Pages', path: '/tickets', icon: LifeBuoy, keywords: ['support', 'messages', 'help'] },
-    { id: 'billing', name: 'Billing & Invoices', description: 'Manage invoices, automations & tax rates', category: 'Pages', path: '/billing', icon: DollarSign, keywords: ['invoices', 'stripe', 'payments'] },
-    { id: 'products', name: 'Product Catalog', description: 'Configure compute, storage & retail plans', category: 'Pages', path: '/products', icon: HardDrive, keywords: ['plans', 'pricing', 'hardware'] },
-    { id: 'coupons', name: 'Coupons & Promos', description: 'Discount codes and incentives', category: 'Pages', path: '/coupons', icon: Tag, keywords: ['discounts', 'promotions'] },
-    { id: 'services', name: 'Active Services', description: 'Provisioned cloud & dedicated servers', category: 'Pages', path: '/services', icon: Server, keywords: ['instances', 'vps', 'dedicated', 'sftp'] },
-    { id: 'jobs', name: 'Provisioning Queue', description: 'Background job worker execution status', category: 'Pages', path: '/jobs', icon: ListTree, keywords: ['queue', 'tasks', 'workers'] },
-    { id: 'forms', name: 'Service Forms', description: 'Dynamic order form builders', category: 'Pages', path: '/forms', icon: FileText },
-    { id: 'staff', name: 'Staff & RBAC', description: 'Team members, roles and permissions', category: 'Pages', path: '/staff', icon: Shield, keywords: ['roles', 'permissions', 'admin'] },
-    { id: 'email-tpl', name: 'Email Templates', description: 'Transactional email designs', category: 'Pages', path: '/email-templates', icon: MailOpen },
-    { id: 'email-logs', name: 'Email Logs', description: 'Audit history of outbound mail', category: 'Pages', path: '/email-logs', icon: Mail },
-    { id: 'activity', name: 'Activity Log', description: 'Platform audit trails & staff actions', category: 'Pages', path: '/activity', icon: History, keywords: ['audit', 'history'] },
-    { id: 'blog', name: 'Blog Articles', description: 'Editorial and release news', category: 'Pages', path: '/blog', icon: FileText },
-    { id: 'settings', name: 'System Settings', description: 'Platform credentials & environment', category: 'Pages', path: '/settings', icon: Settings },
-    
-    // Actions
-    { id: 'act-prov', name: 'Provision New Service', description: 'Manually allocate a server or storage account', category: 'Actions', path: '/services/new', icon: Plus },
-    { id: 'act-prod', name: 'Create Product Plan', description: 'Add a new retail hosting configuration', category: 'Actions', path: '/products/new', icon: Plus },
-    { id: 'act-ticket', name: 'Open Support Ticket', description: 'Create internal or customer ticket', category: 'Actions', path: '/tickets/new', icon: Plus },
-    { id: 'act-explain', name: explainMode ? 'Disable UI Explanations' : 'Enable UI Explanations (Help Mode)', description: 'Toggle interactive ? boxes across CAMOS', category: 'Actions', action: toggleExplainMode, icon: HelpCircle },
-    
-    // Tools
-    { id: 'launchpad', name: 'Internal Launchpad', description: 'Quick access to sovereign internal tooling', category: 'Tools', path: '/launchpad', icon: ExternalLink },
-  ];
+  const commands = useMemo<CommandItem[]>(() => {
+    const allItems: CommandItem[] = [
+      // Pages
+      { id: 'dash', name: 'Dashboard', description: 'Real-time telemetry, MRR & node health', category: 'Pages', path: '/', icon: Activity, keywords: ['overview', 'mrr', 'stats'] },
+      { id: 'notif', name: 'Notifications', description: 'System alerts and events', category: 'Pages', path: '/notifications', icon: Bell },
+      { id: 'reports', name: 'Reports & Revenue', description: 'Financial metrics & growth analysis', category: 'Pages', path: '/reports', icon: BarChart3, keywords: ['finance', 'revenue', 'analytics'], permission: 'reports.view' },
+      { id: 'customers', name: 'Customer Accounts', description: 'Client profiles, emails & services', category: 'Pages', path: '/customers', icon: Users, keywords: ['users', 'clients'], permission: 'customers.view' },
+      { id: 'tickets', name: 'Support Tickets', description: 'Customer tickets & helpdesk', category: 'Pages', path: '/tickets', icon: LifeBuoy, keywords: ['support', 'messages', 'help'], permission: 'tickets.view' },
+      { id: 'billing', name: 'Billing & Invoices', description: 'Manage invoices, automations & tax rates', category: 'Pages', path: '/billing', icon: DollarSign, keywords: ['invoices', 'stripe', 'payments'], permission: 'invoices.view' },
+      { id: 'products', name: 'Product Catalog', description: 'Configure compute, storage & retail plans', category: 'Pages', path: '/products', icon: HardDrive, keywords: ['plans', 'pricing', 'hardware'], permission: 'products.view' },
+      { id: 'coupons', name: 'Coupons & Promos', description: 'Discount codes and incentives', category: 'Pages', path: '/coupons', icon: Tag, keywords: ['discounts', 'promotions'], permission: 'coupons.manage' },
+      { id: 'services', name: 'Active Services', description: 'Provisioned cloud & dedicated servers', category: 'Pages', path: '/services', icon: Server, keywords: ['instances', 'vps', 'dedicated', 'sftp'], permission: 'services.view' },
+      { id: 'jobs', name: 'Provisioning Queue', description: 'Background job worker execution status', category: 'Pages', path: '/jobs', icon: ListTree, keywords: ['queue', 'tasks', 'workers'], permission: 'jobs.view' },
+      { id: 'forms', name: 'Service Forms', description: 'Dynamic order form builders', category: 'Pages', path: '/forms', icon: FileText, permission: 'forms.manage' },
+      { id: 'staff', name: 'Staff & RBAC', description: 'Team members, roles and permissions', category: 'Pages', path: '/staff', icon: Shield, keywords: ['roles', 'permissions', 'admin'], permission: 'staff.view' },
+      { id: 'email-tpl', name: 'Email Templates', description: 'Transactional email designs', category: 'Pages', path: '/email-templates', icon: MailOpen, permission: 'templates.manage' },
+      { id: 'email-logs', name: 'Email Logs', description: 'Audit history of outbound mail', category: 'Pages', path: '/email-logs', icon: Mail, permission: 'mail.view' },
+      { id: 'activity', name: 'Activity Log', description: 'Platform audit trails & staff actions', category: 'Pages', path: '/activity', icon: History, keywords: ['audit', 'history'], permission: 'activity.view' },
+      { id: 'blog', name: 'Blog Articles', description: 'Editorial and release news', category: 'Pages', path: '/blog', icon: FileText, permission: 'blog.view' },
+      { id: 'settings', name: 'System Settings', description: 'Platform credentials & environment', category: 'Pages', path: '/settings', icon: Settings, permission: 'settings.manage' },
 
-  const filtered = commands.filter(item => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return (
-      item.name.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q) ||
-      item.keywords?.some(k => k.includes(q))
+      // Actions
+      { id: 'act-prov', name: 'Provision New Service', description: 'Manually allocate a server or storage account', category: 'Actions', path: '/services/new', icon: Plus, permission: 'services.manage' },
+      { id: 'act-prod', name: 'Create Product Plan', description: 'Add a new retail hosting configuration', category: 'Actions', path: '/products/new', icon: Plus, permission: 'products.create' },
+      { id: 'act-ticket', name: 'Open Support Ticket', description: 'Create internal or customer ticket', category: 'Actions', path: '/tickets/new', icon: Plus, permission: 'tickets.create' },
+      { id: 'act-explain', name: explainMode ? 'Disable UI Explanations' : 'Enable UI Explanations (Help Mode)', description: 'Toggle interactive ? boxes across CAMOS', category: 'Actions', action: toggleExplainMode, icon: HelpCircle },
+
+      // Tools
+      { id: 'launchpad', name: 'Internal Launchpad', description: 'Quick access to sovereign internal tooling', category: 'Tools', path: '/launchpad', icon: ExternalLink },
+    ];
+    return allItems.filter((item) => !item.permission || hasPermission(item.permission));
+  }, [explainMode, toggleExplainMode]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return commands;
+    return commands.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.keywords?.some((k) => k.includes(q))
     );
-  });
+  }, [commands, query]);
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (isOpen) onClose();
-        else {
-          // Open
-        }
-      }
-      if (!isOpen) return;
+    if (!isOpen) return;
 
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % (filtered.length || 1));
+        setSelectedIndex((prev) => (prev + 1) % (filtered.length || 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + filtered.length) % (filtered.length || 1));
+        setSelectedIndex((prev) => (prev - 1 + (filtered.length || 1)) % (filtered.length || 1));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (filtered[selectedIndex]) {
-          const item = filtered[selectedIndex];
+        const item = filtered[selectedIndex];
+        if (item) {
           if (item.action) {
             item.action();
           } else if (item.path) {
@@ -137,10 +138,13 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-24 px-3 sm:px-4 bg-black/50 backdrop-blur-xs animate-ui-fade"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-xl bg-background border border-border shadow-2xl rounded-xl overflow-hidden animate-in zoom-in-95 duration-150"
-        onClick={e => e.stopPropagation()}
+        className="w-full max-w-xl bg-card border border-border shadow-2xl rounded-2xl overflow-hidden animate-ui-scale"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center px-4 border-b border-border bg-foreground/[0.02]">
           <Search className="w-4 h-4 text-muted-foreground mr-3 shrink-0" />
@@ -149,18 +153,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             type="text"
             placeholder="Type a command or jump to page... (e.g. Invoices, Tickets, MRR)"
             value={query}
-            onChange={e => {
+            onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
             className="w-full py-3.5 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
           />
-          <kbd className="hidden sm:inline-flex text-[10px] uppercase font-mono px-1.5 py-0.5 border border-border rounded text-muted-foreground bg-foreground/5">
+          <kbd className="hidden sm:inline-flex text-[10px] uppercase font-mono px-2 py-0.5 border border-border rounded-lg text-muted-foreground bg-foreground/5">
             ESC
           </kbd>
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+        <div className="max-h-[55dvh] sm:max-h-80 overflow-y-auto p-2 space-y-1">
           {filtered.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">
               No matching pages or actions found for "{query}".
@@ -178,21 +182,34 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                     else if (item.path) navigate(item.path);
                     onClose();
                   }}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-colors cursor-pointer ${
-                    isSelected ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:bg-foreground/5'
+                  onMouseEnter={() => {
+                    setSelectedIndex(index);
+                    if (item.path) prefetchRoute(item.path);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-sm transition-colors duration-100 cursor-pointer ${
+                    isSelected
+                      ? 'bg-foreground/10 text-foreground'
+                      : 'text-muted-foreground hover:bg-foreground/5'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${isSelected ? 'bg-foreground text-background' : 'bg-foreground/5 text-muted-foreground'}`}>
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected
+                          ? 'bg-foreground text-background'
+                          : 'bg-foreground/5 text-muted-foreground'
+                      }`}
+                    >
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium text-xs text-foreground truncate">{item.name}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{item.description}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {item.description}
+                      </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono uppercase text-muted-foreground/60 px-1.5 py-0.5 rounded border border-border/50 shrink-0 ml-2">
+                  <span className="text-[10px] font-mono uppercase text-muted-foreground/70 px-2 py-0.5 rounded-full border border-border/60 shrink-0 ml-2">
                     {item.category}
                   </span>
                 </button>
@@ -201,13 +218,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-border bg-foreground/[0.02] flex items-center justify-between text-[11px] text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span>Use <kbd className="font-mono text-[10px] px-1 py-0.5 border rounded">↑</kbd> <kbd className="font-mono text-[10px] px-1 py-0.5 border rounded">↓</kbd> to navigate</span>
-            <span>•</span>
-            <span><kbd className="font-mono text-[10px] px-1 py-0.5 border rounded">↵</kbd> to select</span>
+        <div className="px-4 py-2.5 border-t border-border bg-foreground/[0.02] flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>
+              Use <kbd className="font-mono text-[10px] px-1.5 py-0.5 border rounded-md">↑</kbd>{' '}
+              <kbd className="font-mono text-[10px] px-1.5 py-0.5 border rounded-md">↓</kbd> to navigate
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">
+              <kbd className="font-mono text-[10px] px-1.5 py-0.5 border rounded-md">↵</kbd> to select
+            </span>
           </div>
-          <span className="font-mono text-[10px]">CAMOS v2.4</span>
+          <span className="font-mono text-[10px] shrink-0">CAMOS v2.5</span>
         </div>
       </div>
     </div>

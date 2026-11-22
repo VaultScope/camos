@@ -56,4 +56,27 @@ describe('Login', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
+
+  it('handles MFA challenge and accepts shared 6-digit TOTP or recovery code', async () => {
+    const mfaErr: any = new Error('MFA_REQUIRED');
+    mfaErr.mfaRequired = true;
+    mockLogin.mockRejectedValueOnce(mfaErr).mockResolvedValueOnce({} as any);
+
+    render(<MemoryRouter><Login /></MemoryRouter>);
+    fireEvent.change(screen.getByPlaceholderText('Email address'), { target: { value: 'shared@vaultscope.de' } });
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Two-Factor Verification')).toBeDefined();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: 'A1B2-C3D4-E5F6-1234-5678' } });
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Continue/i }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenLastCalledWith('shared@vaultscope.de', 'password123', 'A1B2-C3D4-E5F6-1234-5678');
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    });
+  });
 });

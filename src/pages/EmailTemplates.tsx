@@ -107,31 +107,31 @@ export default function EmailTemplatesPage() {
 
     return (
       <Page title="Email Templates" requiredPermission="templates.manage">
-        <button onClick={() => setEditing(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer">
+        <button onClick={() => setEditing(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-5 cursor-pointer">
           <ArrowLeft className="w-4 h-4" /> Back to templates
         </button>
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
             <h3 className="text-lg font-medium">{currentTemplate.name}</h3>
             <span className="text-xs text-muted-foreground uppercase tracking-wider">{categoryLabels[currentTemplate.category] || currentTemplate.category}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => { setShowTestModal(true); setTestResult(null); }}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
             >
               <Send className="w-4 h-4 text-blue-400" /> Send Test
             </button>
             <button
               onClick={() => setPreviewing(!previewing)}
-              className={`flex items-center gap-2 px-3 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer ${previewing ? 'bg-foreground/5' : ''}`}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer ${previewing ? 'bg-foreground/5' : ''}`}
             >
               <Eye className="w-4 h-4" /> {previewing ? 'Edit' : 'Preview'}
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
             >
               <Save className="w-4 h-4" /> {saved ? 'Saved!' : 'Save'}
             </button>
@@ -139,40 +139,42 @@ export default function EmailTemplatesPage() {
         </div>
 
         {previewing ? (
-          <div className="border border-border bg-background">
-            <div className="p-4 border-b border-border bg-foreground/5">
+          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="p-4 sm:px-5 border-b border-border bg-foreground/[0.03]">
               <div className="text-xs text-muted-foreground uppercase mb-1">Subject</div>
               <div className="text-sm font-medium">{editSubject}</div>
             </div>
             <div
-              className="p-6 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+              className="p-5 sm:p-6 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(editBody, {
-                  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?!\/))/i,
+                  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/(?![/\\]))/i,
+                  FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'object', 'embed', 'svg', 'math'],
+                  FORBID_ATTR: ['style', 'srcdoc', 'formaction'],
                 }),
               }}
             />
           </div>
         ) : (
-          <div className="flex gap-6">
+          <div className="flex flex-col xl:flex-row gap-6">
             {/* Editor */}
             <div className="flex-1 min-w-0 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Subject Line</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Subject Line</label>
                   <input
                     type="text"
                     value={editSubject}
                     onChange={e => setEditSubject(e.target.value)}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                    className="w-full rounded-xl border border-border bg-card p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Mailbox Override</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Mailbox Override</label>
                   <select
                     value={editMailboxId}
                     onChange={e => setEditMailboxId(e.target.value)}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-card p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="">Default Mailbox</option>
                     {mailboxes?.map(mb => (
@@ -182,43 +184,43 @@ export default function EmailTemplatesPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Body</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Body</label>
                 <WysiwygEditor content={editBody} onChange={setEditBody} />
               </div>
             </div>
 
             {/* Variables Sidebar */}
-            <div className="w-72 shrink-0 space-y-4">
-              <div className="border border-border bg-background p-4">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Global Variables</h4>
+            <div className="w-full xl:w-72 shrink-0 space-y-4">
+              <div className="rounded-2xl border border-border bg-card shadow-xs p-4">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Global Variables</h4>
                 <p className="text-xs text-muted-foreground mb-3">Available in all templates. Click to copy.</p>
-                <div className="space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1.5">
                   {GLOBAL_VARIABLES.map(v => (
                     <button
                       key={v.key}
                       onClick={() => copyVar(v.key)}
-                      className="w-full flex items-center justify-between px-2 py-1.5 border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
                     >
-                      <span className="font-mono text-xs text-foreground">{`{{${v.key}}}`}</span>
-                      <Copy className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      <span className="font-mono text-xs text-foreground truncate">{`{{${v.key}}}`}</span>
+                      <Copy className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
                     </button>
                   ))}
                 </div>
               </div>
 
               {templateVars.length > 0 && (
-                <div className="border border-border bg-background p-4">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Template Variables</h4>
+                <div className="rounded-2xl border border-border bg-card shadow-xs p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Template Variables</h4>
                   <p className="text-xs text-muted-foreground mb-3">Specific to this template.</p>
-                  <div className="space-y-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1.5">
                     {templateVars.map((v: string) => (
                       <button
                         key={v}
                         onClick={() => copyVar(v)}
-                        className="w-full flex items-center justify-between px-2 py-1.5 border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-border hover:bg-foreground/5 transition-colors cursor-pointer group text-left"
                       >
-                        <span className="font-mono text-xs text-foreground">{`{{${v}}}`}</span>
-                        <Copy className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        <span className="font-mono text-xs text-foreground truncate">{`{{${v}}}`}</span>
+                        <Copy className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
                       </button>
                     ))}
                   </div>
@@ -229,13 +231,13 @@ export default function EmailTemplatesPage() {
         )}
 
         {showTestModal && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-background border border-border shadow-lg p-6 w-full max-w-lg">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+            <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90dvh] overflow-y-auto animate-ui-scale">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-medium flex items-center gap-2">
                   <Mail className="w-4 h-4 text-muted-foreground" /> Send Test Email
                 </h3>
-                <button onClick={() => setShowTestModal(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                <button onClick={() => setShowTestModal(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -244,33 +246,33 @@ export default function EmailTemplatesPage() {
               </p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Recipient Address</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Recipient Address</label>
                   <input
                     type="email"
                     value={testRecipient}
                     onChange={e => setTestRecipient(e.target.value)}
                     placeholder="e.g. admin@vaultscope.de"
-                    className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   />
                 </div>
                 {testResult && (
-                  <div className="p-3 border border-green-500/30 bg-green-500/5 text-xs space-y-2">
+                  <div className="p-3.5 rounded-xl border border-green-500/30 bg-green-500/5 text-xs space-y-2">
                     <div className="text-green-500 font-medium">Test Dispatched Successfully!</div>
                     <div><strong>Subject:</strong> {testResult.rendered_subject}</div>
-                    <div className="font-mono text-[11px] max-h-32 overflow-y-auto bg-background p-2 border border-border whitespace-pre-wrap">
+                    <div className="font-mono text-[11px] max-h-32 overflow-y-auto bg-background p-2.5 rounded-lg border border-border whitespace-pre-wrap">
                       {testResult.rendered_body}
                     </div>
                   </div>
                 )}
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => setShowTestModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5 cursor-pointer">
+                <button onClick={() => setShowTestModal(false)} className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5 cursor-pointer">
                   Close
                 </button>
                 <button
                   onClick={handleTestSend}
                   disabled={!testRecipient.trim() || testSending}
-                  className="px-4 py-2 bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer flex items-center gap-2"
                 >
                   <Send className="w-4 h-4" /> {testSending ? 'Sending...' : 'Send'}
                 </button>
@@ -284,12 +286,12 @@ export default function EmailTemplatesPage() {
 
   return (
     <Page title="Email Templates" requiredPermission="templates.manage">
-      <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-border pb-5">
         <p className="text-sm text-muted-foreground">Manage transactional email templates sent to customers.</p>
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          className="rounded-xl bg-card border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 sm:w-48 cursor-pointer"
         >
           <option value="all">All Categories</option>
           {Object.entries(categoryLabels).map(([k, v]) => (
@@ -302,7 +304,7 @@ export default function EmailTemplatesPage() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load templates: {error}</div>}
 
       {!loading && !error && items.length === 0 && (
-        <div className="p-8 text-center text-muted-foreground text-sm border border-border bg-background">
+        <div className="p-8 text-center text-muted-foreground text-sm rounded-2xl border border-border bg-card">
           No email templates configured. Seed the database with templates to get started.
         </div>
       )}
@@ -311,19 +313,19 @@ export default function EmailTemplatesPage() {
         <div className="space-y-6">
           {grouped.map(group => (
             <div key={group.key}>
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{group.label}</h3>
-              <div className="border border-border bg-background divide-y divide-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">{group.label}</h3>
+              <div className="rounded-2xl border border-border bg-card shadow-xs divide-y divide-border overflow-hidden">
                 {group.items.map(t => (
-                  <div key={t.id} className="flex items-center justify-between px-5 py-4 hover:bg-foreground/[0.02] transition-colors">
+                  <div key={t.id} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 hover:bg-foreground/[0.025] transition-colors">
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => startEdit(t)}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-sm font-medium ${!t.enabled ? 'text-muted-foreground line-through' : ''}`}>{t.name}</span>
-                        {!t.enabled && <span className="text-[10px] px-1.5 py-0.5 border border-border text-muted-foreground">Disabled</span>}
+                        {!t.enabled && <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground">Disabled</span>}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5 font-mono truncate">{t.subject}</div>
                     </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-[10px] text-muted-foreground">{t.updated_at?.split('T')[0]}</span>
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                      <span className="text-[10px] font-mono text-muted-foreground hidden sm:inline">{t.updated_at?.split('T')[0]}</span>
                       <button onClick={() => toggleEnabled(t)} className="text-muted-foreground hover:text-foreground cursor-pointer">
                         {t.enabled ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5" />}
                       </button>

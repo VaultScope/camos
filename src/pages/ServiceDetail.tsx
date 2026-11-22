@@ -26,7 +26,8 @@ const osImages = [
 
 export default function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: service, loading, error, refetch } = useApi<Service>(`/admin/services/${id}`);
+  const encodedId = id ? encodeURIComponent(id) : '';
+  const { data: service, loading, error, refetch } = useApi<Service>(encodedId ? `/admin/services/${encodedId}` : '');
   const [showReinstall, setShowReinstall] = useState(false);
   const [selectedOs, setSelectedOs] = useState('ubuntu-24.04');
   const [authMethod, setAuthMethod] = useState<'password' | 'ssh'>('password');
@@ -59,7 +60,7 @@ export default function ServiceDetail() {
     setSavingOrderState(true);
     setOrderStateMsg('');
     try {
-      await api.patch(`/admin/services/${id}/order-state`, {
+      await api.patch(`/admin/services/${encodedId}/order-state`, {
         order_state: orderStateInput,
         order_state_note: orderNoteInput,
         ip: orderIpInput.trim() || undefined,
@@ -93,7 +94,7 @@ export default function ServiceDetail() {
     setShowIpmiModal(true);
     setIpmiLoading(true);
     try {
-      const data = await api.post<any>(`/admin/services/${id}/ipmi`, {});
+      const data = await api.post<any>(`/admin/services/${encodedId}/ipmi`, {});
       setIpmiData(data);
     } catch (e: any) {
       alert(e.message || 'Failed to request IPMI session');
@@ -104,9 +105,15 @@ export default function ServiceDetail() {
 
   const handleAction = async (action: 'suspend' | 'reactivate' | 'terminate') => {
     if (!id) return;
+    if (action === 'terminate' && !window.confirm('Are you sure you want to permanently terminate this service?')) {
+      return;
+    }
+    if (action === 'suspend' && !window.confirm('Are you sure you want to suspend this service?')) {
+      return;
+    }
     setActionLoading(true);
     try {
-      await api.post(`/admin/services/${id}/${action}`, {});
+      await api.post(`/admin/services/${encodedId}/${action}`, {});
       refetch();
     } catch (e: any) {
       alert(e.message || `Failed to ${action}`);
@@ -124,16 +131,16 @@ export default function ServiceDetail() {
 
   return (
     <Page title="Instance Management" requiredPermission="services.view">
-      <div className="mb-6 flex justify-between items-center">
-        <Link to="/services" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <Link to="/services" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Services
         </Link>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {service.status === 'running' && (
             <button
               onClick={() => handleAction('suspend')}
               disabled={actionLoading}
-              className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-yellow-500/10 transition-colors text-yellow-500 font-medium disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-yellow-500/10 transition-colors text-yellow-500 font-medium disabled:opacity-50 cursor-pointer"
             >
               <Power className="w-4 h-4" /> Suspend
             </button>
@@ -142,7 +149,7 @@ export default function ServiceDetail() {
             <button
               onClick={() => handleAction('reactivate')}
               disabled={actionLoading}
-              className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-green-500/10 transition-colors text-green-500 font-medium disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-green-500/10 transition-colors text-green-500 font-medium disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" /> Reactivate
             </button>
@@ -151,7 +158,7 @@ export default function ServiceDetail() {
             <button
               onClick={() => handleAction('terminate')}
               disabled={actionLoading}
-              className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-red-500/10 transition-colors text-red-500 font-medium disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-red-500/10 transition-colors text-red-500 font-medium disabled:opacity-50 cursor-pointer"
             >
               <Power className="w-4 h-4" /> Terminate
             </button>
@@ -159,34 +166,34 @@ export default function ServiceDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="col-span-2 border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 font-medium flex justify-between items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2 rounded-2xl border border-border divide-y divide-border bg-card shadow-xs overflow-hidden">
+          <div className="p-4 sm:px-5 bg-foreground/[0.03] font-medium flex flex-wrap justify-between items-center gap-2">
             <div className="flex items-center gap-2">
               <span>{service.name}</span>
               {service.is_trial && (
-                <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded font-mono">
+                <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 rounded-full font-mono">
                   Active Trial
                 </span>
               )}
             </div>
-            <span className={`flex items-center gap-2 text-xs ${statusColor}`}>
+            <span className={`flex items-center gap-2 text-xs px-2.5 py-0.5 rounded-full border border-border bg-background ${statusColor}`}>
               <div className={`w-2 h-2 rounded-full ${statusColor.replace('text-', 'bg-')}`} />
               {service.status}
             </span>
           </div>
-          <div className="p-6 grid grid-cols-2 gap-y-6">
+          <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4">
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Service ID</div>
               <div className="font-mono text-sm">{service.id.slice(0, 8)}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Hostname</div>
-              <div className="font-medium">{service.hostname || '—'}</div>
+              <div className="font-medium break-all">{service.hostname || '—'}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Price</div>
-              <div className="font-medium">€{parseFloat(service.price || '0').toFixed(2)} / mo</div>
+              <div className="font-medium tabular-nums">€{parseFloat(service.price || '0').toFixed(2)} / mo</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Created</div>
@@ -205,16 +212,16 @@ export default function ServiceDetail() {
             </div>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Provider Resource</div>
-              <div className="font-mono text-sm">{service.provider_resource_id || '—'}</div>
+              <div className="font-mono text-sm break-all">{service.provider_resource_id || '—'}</div>
             </div>
           </div>
         </div>
 
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 font-medium flex items-center gap-2">
+        <div className="rounded-2xl border border-border divide-y divide-border bg-card shadow-xs overflow-hidden">
+          <div className="p-4 sm:px-5 bg-foreground/[0.03] font-medium flex items-center gap-2">
             <Wifi className="w-4 h-4" /> Network
           </div>
-          <div className="p-4 space-y-4">
+          <div className="p-5 space-y-4">
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Primary IP</div>
               <div className="font-mono text-sm">{service.ip || '—'}</div>
@@ -231,7 +238,7 @@ export default function ServiceDetail() {
         </div>
       </div>
 
-      <div className="border border-border p-5 bg-background mb-8">
+      <div className="rounded-2xl border border-border p-5 sm:p-6 bg-card shadow-xs mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
             <h3 className="text-sm font-medium">Order &amp; Provisioning State</h3>
@@ -239,7 +246,7 @@ export default function ServiceDetail() {
               Visible to the client in their dashboard Orders tracker (requires <code className="font-mono">services.manage</code>).
             </p>
           </div>
-          <span className="text-xs font-mono uppercase px-2 py-0.5 border border-border">
+          <span className="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full border border-border bg-foreground/5">
             {(service.order_state || 'active').replace(/_/g, ' ')}
           </span>
         </div>
@@ -248,14 +255,14 @@ export default function ServiceDetail() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">
                   Order State
                 </label>
                 <select
                   aria-label="Order State"
                   value={orderStateInput}
                   onChange={e => setOrderStateInput(e.target.value)}
-                  className="w-full border border-border bg-background p-2.5 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   {ORDER_STATE_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -263,7 +270,7 @@ export default function ServiceDetail() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">
                   Assigned IP (optional)
                 </label>
                 <input
@@ -271,12 +278,12 @@ export default function ServiceDetail() {
                   value={orderIpInput}
                   onChange={e => setOrderIpInput(e.target.value)}
                   placeholder="e.g. 185.x.x.x"
-                  className="w-full border border-border bg-transparent p-2.5 text-sm font-mono focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">
                 Customer-Visible Note
               </label>
               <input
@@ -284,7 +291,7 @@ export default function ServiceDetail() {
                 value={orderNoteInput}
                 onChange={e => setOrderNoteInput(e.target.value)}
                 placeholder="e.g. Hardware allocation queued (up to 7 business days after payment)"
-                className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -293,7 +300,7 @@ export default function ServiceDetail() {
                   type="checkbox"
                   checked={notifyCustomer}
                   onChange={e => setNotifyCustomer(e.target.checked)}
-                  className="w-4 h-4 accent-foreground cursor-pointer"
+                  className="w-4 h-4 accent-foreground cursor-pointer rounded"
                 />
                 Notify customer via email about this order update
               </label>
@@ -305,7 +312,7 @@ export default function ServiceDetail() {
                   type="button"
                   onClick={handleSaveOrderState}
                   disabled={savingOrderState}
-                  className="px-4 py-2 bg-foreground text-background text-xs font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-foreground text-background text-xs font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer transition-colors"
                 >
                   {savingOrderState ? 'Saving...' : 'Update Order State'}
                 </button>
@@ -323,21 +330,21 @@ export default function ServiceDetail() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="col-span-2 border border-border p-5 bg-background">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2 rounded-2xl border border-border p-5 sm:p-6 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4">Configuration</h3>
-          <pre className="text-xs font-mono bg-foreground/5 p-4 border border-border overflow-auto max-h-48">
+          <pre className="text-xs font-mono bg-foreground/5 p-4 rounded-xl border border-border overflow-auto max-h-56">
             {JSON.stringify(service.config, null, 2)}
           </pre>
         </div>
 
-        <div className="border border-border p-5 bg-background flex flex-col gap-4">
-          <h3 className="text-sm font-medium mb-2">Destructive Actions</h3>
-          <p className="text-xs text-muted-foreground mb-4">These actions interface directly with the upstream provider and will cause downtime or data loss.</p>
+        <div className="rounded-2xl border border-border p-5 sm:p-6 bg-card shadow-xs flex flex-col gap-3">
+          <h3 className="text-sm font-medium">Destructive Actions</h3>
+          <p className="text-xs text-muted-foreground mb-1">These actions interface directly with the upstream provider and will cause downtime or data loss.</p>
 
-          <button className="flex items-center justify-between border border-border p-4 hover:bg-foreground/5 transition-colors group">
+          <button className="flex items-center justify-between rounded-xl border border-border p-3.5 hover:bg-foreground/5 transition-colors group cursor-pointer">
             <div className="flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-yellow-500" />
+              <ShieldAlert className="w-5 h-5 text-yellow-500 shrink-0" />
               <div className="text-left">
                 <div className="text-sm font-medium group-hover:text-yellow-500 transition-colors">Boot Rescue System</div>
                 <div className="text-xs text-muted-foreground">Reboots into Linux Live ISO</div>
@@ -345,9 +352,9 @@ export default function ServiceDetail() {
             </div>
           </button>
 
-          <button onClick={handleOpenIpmi} className="flex items-center justify-between border border-border p-4 hover:bg-blue-500/10 transition-colors group">
+          <button onClick={handleOpenIpmi} className="flex items-center justify-between rounded-xl border border-border p-3.5 hover:bg-blue-500/10 transition-colors group cursor-pointer">
             <div className="flex items-center gap-3">
-              <Terminal className="w-5 h-5 text-blue-500" />
+              <Terminal className="w-5 h-5 text-blue-500 shrink-0" />
               <div className="text-left">
                 <div className="text-sm font-medium group-hover:text-blue-500 transition-colors">Out-of-Band IPMI / KVM</div>
                 <div className="text-xs text-muted-foreground">Supermicro / ReliableSite BMC Console</div>
@@ -355,9 +362,9 @@ export default function ServiceDetail() {
             </div>
           </button>
 
-          <button onClick={() => setShowReinstall(true)} className="flex items-center justify-between border border-border p-4 hover:bg-red-500/10 transition-colors group">
+          <button onClick={() => setShowReinstall(true)} className="flex items-center justify-between rounded-xl border border-border p-3.5 hover:bg-red-500/10 transition-colors group cursor-pointer">
             <div className="flex items-center gap-3">
-              <HardDrive className="w-5 h-5 text-red-500" />
+              <HardDrive className="w-5 h-5 text-red-500 shrink-0" />
               <div className="text-left">
                 <div className="text-sm font-medium group-hover:text-red-500 transition-colors">Reinstall OS</div>
                 <div className="text-xs text-muted-foreground">Wipes all customer data</div>
@@ -368,31 +375,31 @@ export default function ServiceDetail() {
       </div>
 
       {showReinstall && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-background border border-border p-6 max-w-2xl w-full">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 max-w-2xl w-full max-h-[90dvh] overflow-y-auto animate-ui-scale">
+            <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-light text-red-500 flex items-center gap-2"><HardDrive className="w-5 h-5" /> OS Reinstallation</h2>
-              <button onClick={() => setShowReinstall(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowReinstall(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
 
-            <p className="text-sm text-muted-foreground mb-6">Select a clean image to deploy. All existing data on the disk will be permanently erased.</p>
+            <p className="text-sm text-muted-foreground mb-5">Select a clean image to deploy. All existing data on the disk will be permanently erased.</p>
 
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
               {osImages.map(os => (
                 <button
                   key={os.id}
                   onClick={() => setSelectedOs(os.id)}
-                  className={`border p-4 flex flex-col items-center gap-3 transition-colors ${selectedOs === os.id ? 'border-foreground bg-foreground/5' : 'border-border hover:border-muted-foreground'}`}
+                  className={`rounded-xl border p-4 flex flex-col items-center gap-3 transition-colors cursor-pointer ${selectedOs === os.id ? 'border-foreground bg-foreground/5' : 'border-border hover:border-muted-foreground'}`}
                 >
-                  <img src={os.icon} alt={os.name} className="w-10 h-10" />
+                  <img src={os.icon} alt={os.name} className="w-10 h-10" loading="lazy" />
                   <span className="text-xs font-medium text-center">{os.name}</span>
                 </button>
               ))}
             </div>
 
-            <div className="mb-6 space-y-4 border border-border p-4">
+            <div className="mb-6 space-y-4 rounded-xl border border-border p-4">
               <h3 className="text-sm font-medium">Authentication Method</h3>
-              <div className="flex gap-6">
+              <div className="flex flex-wrap gap-4 sm:gap-6">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="radio" checked={authMethod === 'password'} onChange={() => setAuthMethod('password')} className="accent-foreground" />
                   Generate Root Password
@@ -403,38 +410,38 @@ export default function ServiceDetail() {
                 </label>
               </div>
               {authMethod === 'ssh' && (
-                <select className="w-full bg-transparent border border-border p-2 text-sm outline-none">
+                <select className="w-full rounded-xl bg-background border border-border p-2.5 text-sm outline-none">
                   <option>Customer Key: vaultscope-admin-key</option>
                   <option>Staff Key: admin-override-key</option>
                 </select>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowReinstall(false)} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Cancel</button>
-              <button className="px-4 py-2 text-sm bg-red-500 text-white font-medium hover:bg-red-600 transition-colors">Confirm Reinstall</button>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowReinstall(false)} className="px-4 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 cursor-pointer">Cancel</button>
+              <button className="px-4 py-2 rounded-xl text-sm bg-red-500 text-white font-medium hover:bg-red-600 transition-colors cursor-pointer">Confirm Reinstall</button>
             </div>
           </div>
         </div>
       )}
 
       {showIpmiModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-background border border-border p-6 max-w-xl w-full relative">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 max-w-xl w-full max-h-[90dvh] overflow-y-auto relative animate-ui-scale">
             <button
               onClick={closeIpmiModal}
               aria-label="Close IPMI modal"
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded">
+            <div className="flex items-center gap-3 mb-6 pr-8">
+              <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-500 rounded-xl shrink-0">
                 <Terminal className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-light">Out-of-Band IPMI / KVM Session</h2>
+                <h2 className="text-lg sm:text-xl font-light">Out-of-Band IPMI / KVM Session</h2>
                 <p className="text-xs text-muted-foreground">Supermicro BMC Hardware Console</p>
               </div>
             </div>
@@ -446,57 +453,57 @@ export default function ServiceDetail() {
               </div>
             ) : ipmiData ? (
               <div className="space-y-4">
-                <div className="p-3 bg-foreground/5 border border-border text-xs flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-foreground/5 border border-border text-xs flex items-center justify-between">
                   <span className="text-muted-foreground">Session Status</span>
                   <span className="text-green-500 font-medium flex items-center gap-1.5">
                     <span className="w-2 h-2 bg-green-500 rounded-full" /> Staff Session Active
                   </span>
                 </div>
 
-                <div className="border border-border divide-y divide-border text-sm">
-                  <div className="p-3 flex items-center justify-between">
+                <div className="rounded-xl border border-border divide-y divide-border text-sm overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">IPMI Host</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">{ipmiData.ipmi_host}</span>
-                      <button onClick={() => copyToClipboard(ipmiData.ipmi_host, 'ipmi_host')} className="text-muted-foreground hover:text-foreground">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono text-xs truncate">{ipmiData.ipmi_host}</span>
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_host, 'ipmi_host')} className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer">
                         {copiedField === 'ipmi_host' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-3 flex items-center justify-between">
+                  <div className="p-3 flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">Port</span>
                     <span className="font-mono text-xs">{ipmiData.ipmi_port} (HTTPS)</span>
                   </div>
 
-                  <div className="p-3 flex items-center justify-between">
+                  <div className="p-3 flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">Username</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-semibold">{ipmiData.ipmi_username}</span>
-                      <button onClick={() => copyToClipboard(ipmiData.ipmi_username, 'ipmi_username')} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_username, 'ipmi_username')} className="text-muted-foreground hover:text-foreground cursor-pointer">
                         {copiedField === 'ipmi_username' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-3 flex items-center justify-between">
+                  <div className="p-3 flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">Session Password</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs">
                         {showPassword ? ipmiData.ipmi_password : '••••••••••••••••'}
                       </span>
-                      <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-foreground cursor-pointer">
                         {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
-                      <button onClick={() => copyToClipboard(ipmiData.ipmi_password, 'ipmi_password')} className="text-muted-foreground hover:text-foreground">
+                      <button onClick={() => copyToClipboard(ipmiData.ipmi_password, 'ipmi_password')} className="text-muted-foreground hover:text-foreground cursor-pointer">
                         {copiedField === 'ipmi_password' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6">
-                  <button onClick={closeIpmiModal} className="px-4 py-2 text-sm border border-border hover:bg-foreground/5">Close</button>
+                <div className="flex flex-wrap justify-end gap-3 mt-6">
+                  <button onClick={closeIpmiModal} className="px-4 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 cursor-pointer">Close</button>
                   <button
                     disabled={!isSafeHttpUrl(ipmiData.web_url)}
                     onClick={() => {
@@ -504,7 +511,7 @@ export default function ServiceDetail() {
                         window.open(ipmiData.web_url, '_blank', 'noopener,noreferrer');
                       }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     <ExternalLink className="w-4 h-4" /> Open Web IPMI
                   </button>

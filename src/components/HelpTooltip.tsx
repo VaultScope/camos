@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect, createContext, useContext } from 'react';
+import React, { useState, useRef, useEffect, createContext, useContext, useCallback, useMemo } from 'react';
 import { X, ExternalLink, Info } from 'lucide-react';
+import { isSafeContentUrl } from '../lib/url';
 
 interface ExplainModeContextType {
   explainMode: boolean;
@@ -18,16 +19,21 @@ export const ExplainModeProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return localStorage.getItem('camos_explain_mode') === 'true';
   });
 
-  const toggleExplainMode = () => {
-    setExplainMode(prev => {
+  const toggleExplainMode = useCallback(() => {
+    setExplainMode((prev) => {
       const next = !prev;
       localStorage.setItem('camos_explain_mode', String(next));
       return next;
     });
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ explainMode, toggleExplainMode }),
+    [explainMode, toggleExplainMode]
+  );
 
   return (
-    <ExplainModeContext.Provider value={{ explainMode, toggleExplainMode }}>
+    <ExplainModeContext.Provider value={value}>
       {children}
     </ExplainModeContext.Provider>
   );
@@ -67,7 +73,7 @@ export function HelpTooltip({
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       setIsOpen(true);
-    }, 120);
+    }, 100);
   };
 
   const handleMouseLeave = () => {
@@ -75,14 +81,14 @@ export function HelpTooltip({
     if (!isPinned) {
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
-      }, 150);
+      }, 140);
     }
   };
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setIsPinned(prev => !prev);
+    setIsPinned((prev) => !prev);
     setIsOpen(true);
   };
 
@@ -95,7 +101,6 @@ export function HelpTooltip({
     setIsOpen(false);
   };
 
-  // Close when clicking outside
   useEffect(() => {
     if (!isOpen && !isPinned) return;
 
@@ -143,8 +148,8 @@ export function HelpTooltip({
         ref={triggerRef}
         type="button"
         onClick={handleClick}
-        aria-label={title || "Information"}
-        className={`inline-flex items-center justify-center transition-all cursor-pointer rounded-full select-none ${
+        aria-label={title || 'Information'}
+        className={`inline-flex items-center justify-center transition-colors duration-150 cursor-pointer rounded-full select-none ${
           size === 'sm' ? 'w-4 h-4 text-[10px]' : 'w-5 h-5 text-xs'
         } ${
           isPinned || isOpen
@@ -161,17 +166,17 @@ export function HelpTooltip({
         <div
           ref={popoverRef}
           role="tooltip"
-          className={`absolute z-50 w-72 max-w-xs p-3.5 bg-background border border-border shadow-xl rounded-lg text-left text-foreground animate-in fade-in-0 zoom-in-95 duration-150 ${positionClasses}`}
+          className={`absolute z-50 w-72 max-w-[calc(100vw-2rem)] p-4 bg-card border border-border shadow-xl rounded-2xl text-left text-foreground animate-ui-scale ${positionClasses}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between gap-2 mb-1.5">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               {title && <h4 className="text-xs font-semibold tracking-tight text-foreground">{title}</h4>}
               {badge && (
-                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-foreground/10 text-muted-foreground">
+                <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full bg-foreground/10 text-muted-foreground">
                   {badge}
                 </span>
               )}
@@ -180,7 +185,7 @@ export function HelpTooltip({
               <button
                 type="button"
                 onClick={handleClose}
-                className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-foreground/10 cursor-pointer"
+                className="text-muted-foreground hover:text-foreground p-0.5 rounded-lg hover:bg-foreground/10 cursor-pointer"
                 aria-label="Close tooltip"
               >
                 <X className="w-3 h-3" />
@@ -194,19 +199,21 @@ export function HelpTooltip({
 
           {example && (
             <div className="mt-2.5 pt-2 border-t border-border/50">
-              <span className="text-[10px] font-medium text-foreground/50 uppercase tracking-wider block mb-0.5">Example / Format</span>
-              <code className="text-[11px] font-mono text-foreground/80 bg-foreground/5 px-1.5 py-0.5 rounded block truncate">
+              <span className="text-[10px] font-medium text-foreground/50 uppercase tracking-wider block mb-1">
+                Example / Format
+              </span>
+              <code className="text-[11px] font-mono text-foreground/80 bg-foreground/5 px-2 py-1 rounded-lg block truncate">
                 {example}
               </code>
             </div>
           )}
 
-          {docUrl && (
+          {docUrl && isSafeContentUrl(docUrl) && (
             <div className="mt-2.5 pt-2 border-t border-border/50 flex justify-end">
               <a
                 href={docUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium"
               >
                 Documentation <ExternalLink className="w-2.5 h-2.5" />

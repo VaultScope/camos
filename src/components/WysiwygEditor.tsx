@@ -39,7 +39,7 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       type="button"
-      className={`p-1.5 rounded cursor-pointer flex items-center justify-center ${isActive ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`p-1.5 rounded-lg cursor-pointer flex items-center justify-center transition-colors duration-150 ${isActive ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {children}
     </button>
@@ -49,7 +49,10 @@ function ToolbarButton({
 export const WysiwygEditor = ({ content, onChange }: { content: string, onChange: (content: string) => void }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: false,
+        underline: false,
+      }),
       Underline,
       Subscript,
       Superscript,
@@ -60,7 +63,7 @@ export const WysiwygEditor = ({ content, onChange }: { content: string, onChange
         isAllowedUri: (url) => isAllowedWysiwygLinkUri(url),
         shouldAutoLink: (url) => {
           const trimmed = url.trim()
-          if (!trimmed || trimmed.startsWith('//')) return false
+          if (!trimmed || trimmed.startsWith('//') || /[\u0000-\u001F\u007F\\]/.test(trimmed)) return false
           if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
             return /^(?:https?|mailto):/i.test(trimmed)
           }
@@ -110,8 +113,8 @@ export const WysiwygEditor = ({ content, onChange }: { content: string, onChange
   }
 
   return (
-    <div className="border border-border bg-background flex flex-col">
-      <div className="flex flex-wrap gap-1 p-2 border-b border-border bg-foreground/[0.02] items-center">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs flex flex-col">
+      <div className="flex flex-wrap gap-1 p-2.5 border-b border-border bg-foreground/[0.025] items-center">
         <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="Bold">
           <Bold className="w-4 h-4" />
         </ToolbarButton>

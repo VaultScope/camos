@@ -19,8 +19,9 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mfaRequired && (!totpCode || totpCode.trim().length !== 6)) {
-      setError('Please enter your 6-digit authenticator code');
+    const cleanedCode = totpCode.trim().replace(/[\s-]/g, '');
+    if (mfaRequired && (!cleanedCode || (cleanedCode.length !== 6 && cleanedCode.length !== 20))) {
+      setError('Please enter your 6-digit authenticator code or recovery code');
       return;
     }
 
@@ -42,25 +43,30 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full border border-border bg-foreground/[0.02] p-8 text-center flex flex-col items-center">
-        <img src="/camos.png" alt="CAMOS Logo" className="w-32 h-32 object-contain mb-6" />
-        <h1 className="text-xl font-medium mb-2 text-foreground">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="max-w-md w-full rounded-3xl border border-border bg-card shadow-xl p-6 sm:p-8 text-center flex flex-col items-center">
+        <img
+          src="/camos.png"
+          alt="CAMOS Logo"
+          className="w-24 h-24 sm:w-28 sm:h-28 object-contain mb-5 rounded-2xl"
+          decoding="async"
+        />
+        <h1 className="text-xl font-semibold tracking-tight mb-2 text-foreground">
           {mfaRequired ? 'Two-Factor Verification' : 'Admin Login'}
         </h1>
-        <p className="text-sm text-muted-foreground mb-8">
+        <p className="text-sm text-muted-foreground mb-7">
           {mfaRequired
             ? 'Enter the 6-digit code from your authenticator app.'
             : 'Enter your credentials to access the admin portal.'}
         </p>
 
         {error && (
-          <div className="w-full mb-4 p-3 bg-red-500/10 border border-red-500/50 text-red-500 text-sm">
+          <div className="w-full mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="w-full flex flex-col gap-4">
+        <form onSubmit={handleLogin} className="w-full flex flex-col gap-3.5">
           {!mfaRequired ? (
             <>
               <input
@@ -69,7 +75,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
+                className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 transition-colors"
               />
               <input
                 type="password"
@@ -77,13 +83,13 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
+                className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 transition-colors"
               />
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
+                className="w-full mt-1 flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
               >
-                <Users className="w-5 h-5" />
+                <Users className="w-4 h-4" />
                 Sign in
               </button>
             </>
@@ -91,22 +97,22 @@ export default function Login() {
             <>
               <div className="text-left space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground uppercase">
-                  6-Digit Authenticator Code
+                  6-Digit Authenticator or Recovery Code
                 </label>
                 <input
                   type="text"
-                  maxLength={6}
+                  maxLength={24}
                   autoFocus
                   placeholder="123456"
                   value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setTotpCode(e.target.value.toUpperCase().replace(/[^0-9A-F-]/g, ''))}
                   required
-                  className="w-full bg-background border border-border px-3 py-3 text-center text-xl tracking-widest font-mono focus:outline-none focus:border-foreground transition-colors"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-3 text-center text-xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 transition-colors"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors cursor-pointer"
               >
                 <ShieldCheck className="w-5 h-5" />
                 Verify & Continue
@@ -117,7 +123,7 @@ export default function Login() {
                   setMfaRequired(false);
                   setTotpCode('');
                 }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1 cursor-pointer"
               >
                 Back to email & password
               </button>
