@@ -4,35 +4,35 @@ import TaxRates from './TaxRatesNew';
 import { Page } from '../components/Layout';
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { 
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, 
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   RadialBarChart, RadialBar
 } from 'recharts';
 
 interface ComprehensiveStats {
-    unpaid_invoices: number;
-    paid_invoices: number;
-    revenue: number;
-    profit: number;
-    stripe_balance: number;
-    revenue_per_month: { month: string, revenue: number }[];
-    infrastructure_cost: number;
-    top_clients: { customer_id: string, name: string, total_spent: number }[];
-    coupons_loss: number;
-    top_products: { name: string, count: number }[];
+  unpaid_invoices: number;
+  paid_invoices: number;
+  revenue: number;
+  profit: number;
+  stripe_balance: number;
+  revenue_per_month: { month: string; revenue: number }[];
+  infrastructure_cost: number;
+  top_clients: { customer_id: string; name: string; total_spent: number }[];
+  coupons_loss: number;
+  top_products: { name: string; count: number }[];
 }
 
 function BillingInsights() {
   const [stats, setStats] = useState<ComprehensiveStats | null>(null);
-  
+
   useEffect(() => {
     api.get<ComprehensiveStats>('/admin/invoices/stats/comprehensive')
       .then(res => setStats(res))
       .catch(() => {});
   }, []);
 
-  if (!stats) return <Page title="Billing Insights" requiredPermission="billing.view"><div className="p-5">Loading...</div></Page>;
+  if (!stats) return <Page title="Billing Insights" requiredPermission="billing.view"><div className="p-8 text-center text-sm text-muted-foreground">Loading...</div></Page>;
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -55,9 +55,9 @@ function BillingInsights() {
 
   return (
     <Page title="Billing Insights" requiredPermission="billing.view">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
         {/* 1. Invoices PieChart */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Paid vs Unpaid</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -75,7 +75,7 @@ function BillingInsights() {
         </div>
 
         {/* 2. Revenue vs Profit */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Revenue & Profit (Total)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -85,15 +85,15 @@ function BillingInsights() {
                 <YAxis width={40} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="Revenue" fill="#3b82f6" />
-                <Bar dataKey="Profit" fill="#10b981" />
+                <Bar dataKey="Revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Profit" fill="#10b981" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* 3. Stripe Balance */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Stripe Balance</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -109,12 +109,12 @@ function BillingInsights() {
         </div>
 
         {/* 5. Infrastructure Cost */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Infrastructure Cost</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={[{name: 'Cost', value: Number(stats.infrastructure_cost)}, {name: 'Profit', value: Number(stats.profit)}]} cx="50%" cy="50%" outerRadius={60} dataKey="value">
+                <Pie data={[{ name: 'Cost', value: Number(stats.infrastructure_cost) }, { name: 'Profit', value: Number(stats.profit) }]} cx="50%" cy="50%" outerRadius={60} dataKey="value">
                   <Cell fill="#ef4444" />
                   <Cell fill="#10b981" />
                 </Pie>
@@ -126,9 +126,9 @@ function BillingInsights() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
         {/* 4. Revenue per month */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Revenue Over Time</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -144,7 +144,7 @@ function BillingInsights() {
         </div>
 
         {/* 6. Spent per Client */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Top Clients by Spend</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -153,14 +153,14 @@ function BillingInsights() {
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
                 <Tooltip />
-                <Bar dataKey="total_spent" fill="#f59e0b" name="Spent" />
+                <Bar dataKey="total_spent" fill="#f59e0b" name="Spent" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* 7. Coupons Loss */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Coupons Impact</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -169,14 +169,14 @@ function BillingInsights() {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="value" fill="#ef4444" name="Loss (€)" />
+                <Bar dataKey="value" fill="#ef4444" name="Loss (€)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* 8. Top Products */}
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 text-muted-foreground">Top Products (Active Services)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -206,10 +206,10 @@ function BillingAutomations() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    api.get<{key: string, value: any}[]>('/admin/settings').then((data) => {
+    api.get<{ key: string; value: any }[]>('/admin/settings').then((data) => {
       const mapped: Record<string, any> = {};
       data.forEach((s) => { mapped[s.key] = s.value; });
-      setSettings((prev) => ({ 
+      setSettings((prev) => ({
         grace_period_days: String(mapped.grace_period_days ?? prev.grace_period_days),
         auto_suspend_enabled: String(mapped.auto_suspend_enabled ?? prev.auto_suspend_enabled),
         auto_terminate_days: String(mapped.auto_terminate_days ?? prev.auto_terminate_days),
@@ -230,19 +230,19 @@ function BillingAutomations() {
 
   return (
     <Page title="Billing Automations" requiredPermission="billing.manage">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <p className="text-sm text-muted-foreground">Configure automated billing workflows and payment reminders.</p>
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
         >
           {saved ? 'Saved' : 'Save Changes'}
         </button>
       </div>
-      <div className="border border-border bg-background p-6 space-y-6 max-w-2xl">
+      <div className="rounded-2xl border border-border bg-card shadow-xs p-5 sm:p-6 space-y-5 max-w-2xl">
         <div>
           <label className="block text-sm font-medium mb-2">Grace Period After Due Date</label>
-          <select value={settings.grace_period_days} onChange={e => update('grace_period_days', e.target.value)} className="w-full bg-background border border-border px-3 py-2 text-sm">
+          <select value={settings.grace_period_days} onChange={e => update('grace_period_days', e.target.value)} className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50">
             <option value="3">3 days</option>
             <option value="7">7 days</option>
             <option value="14">14 days</option>
@@ -250,14 +250,14 @@ function BillingAutomations() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Auto-Suspend After Grace Period</label>
-          <select value={settings.auto_suspend_enabled} onChange={e => update('auto_suspend_enabled', e.target.value)} className="w-full bg-background border border-border px-3 py-2 text-sm">
+          <select value={settings.auto_suspend_enabled} onChange={e => update('auto_suspend_enabled', e.target.value)} className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50">
             <option value="Enabled">Enabled</option>
             <option value="Disabled">Disabled</option>
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Auto-Terminate After Suspension</label>
-          <select value={settings.auto_terminate_days} onChange={e => update('auto_terminate_days', e.target.value)} className="w-full bg-background border border-border px-3 py-2 text-sm">
+          <select value={settings.auto_terminate_days} onChange={e => update('auto_terminate_days', e.target.value)} className="w-full rounded-xl bg-background border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50">
             <option value="7">7 days</option>
             <option value="14">14 days</option>
             <option value="30">30 days</option>

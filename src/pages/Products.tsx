@@ -456,7 +456,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
       {/* STORAGE MODE FIELDS (SFTPGo) */}
       {isStorage && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Storage Quota (GB)
@@ -478,7 +478,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                   }
                   onChange(next);
                 }}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 250"
               />
               <span className="text-[10px] text-muted-foreground mt-0.5 block">Numeric quota passed to SFTPGo quota manager</span>
@@ -491,13 +491,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.storage || ''}
                 onChange={e => updateSpec('storage', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 250 GB NVMe Storage"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Supported Protocols
@@ -506,7 +506,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.protocols || 'SFTP, SCP, FTPS, WebDAV'}
                 onChange={e => updateSpec('protocols', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="SFTP, SCP, FTPS, WebDAV"
               />
             </div>
@@ -518,13 +518,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.traffic || 'Unmetered / Fair Use'}
                 onChange={e => updateSpec('traffic', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="Unmetered / Fair Use"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Snapshots & Backups
@@ -533,7 +533,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.snapshots || 'Daily Included'}
                 onChange={e => updateSpec('snapshots', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="Daily Included (ZFS Snapshot)"
               />
             </div>
@@ -545,7 +545,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.location || 'Frankfurt, DE'}
                 onChange={e => updateSpec('location', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="Frankfurt, DE"
               />
             </div>
@@ -556,7 +556,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
       {/* VPS / CLOUD MODE FIELDS (Hetzner Cloud) */}
       {isVps && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 vCPU / Cores
@@ -575,7 +575,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                   }
                   onChange(next);
                 }}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 3 vCPU (AMD EPYC)"
               />
             </div>
@@ -587,13 +587,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.ram || ''}
                 onChange={e => updateSpec('ram', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 4 GB RAM"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Disk / NVMe Storage
@@ -602,7 +602,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.disk || ''}
                 onChange={e => updateSpec('disk', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 80 GB NVMe"
               />
             </div>
@@ -614,13 +614,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.traffic || '20 TB Included'}
                 onChange={e => updateSpec('traffic', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 20 TB Included"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Port Speed / Uplink
@@ -629,7 +629,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.uplink || '1 Gbps'}
                 onChange={e => updateSpec('uplink', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 1 Gbps"
               />
             </div>
@@ -641,7 +641,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.location || 'fsn1 (Falkenstein, DE)'}
                 onChange={e => updateSpec('location', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="fsn1 (Falkenstein, DE)"
               />
             </div>
@@ -652,7 +652,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
       {/* DEDICATED SERVERS MODE FIELDS (ReliableSite, Hetzner Robot, OVH) */}
       {isDedicated && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 CPU / Processor Model
@@ -671,7 +671,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                   }
                   onChange(next);
                 }}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. AMD Ryzen 7 7700 (8C / 16T)"
               />
             </div>
@@ -683,13 +683,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.ram || ''}
                 onChange={e => updateSpec('ram', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 64 GB DDR5 ECC"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Disks & RAID Storage
@@ -698,7 +698,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.disk || ''}
                 onChange={e => updateSpec('disk', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 2x 1 TB NVMe SSD (Software RAID 1)"
               />
             </div>
@@ -710,13 +710,13 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.uplink || '1 Gbps Guaranteed'}
                 onChange={e => updateSpec('uplink', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. 1 Gbps Guaranteed"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                 Monthly Traffic / Bandwidth
@@ -725,7 +725,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.traffic || 'Unlimited / Unmetered'}
                 onChange={e => updateSpec('traffic', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. Unlimited / Unmetered"
               />
             </div>
@@ -737,7 +737,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
                 type="text"
                 value={specs.ipmi || 'KVM over IP (on request)'}
                 onChange={e => updateSpec('ipmi', e.target.value)}
-                className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 placeholder="e.g. IPMI / KVM over IP Included"
               />
             </div>
@@ -751,7 +751,7 @@ function ProviderSpecsEditor({ provider, category, specs, onChange }: ProviderSp
               type="text"
               value={specs.location || ''}
               onChange={e => updateSpec('location', e.target.value)}
-              className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+              className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
               placeholder="e.g. Falkenstein, DE or Miami, FL"
             />
           </div>
@@ -939,24 +939,24 @@ function ProductsInsights() {
 
   return (
     <Page title="Product Insights" requiredPermission="products.view">
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <div className="border border-border p-5 bg-background">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 flex items-center gap-2 text-muted-foreground">
             <TrendingUp className="w-4 h-4" /> Total Products
           </h3>
-          <div className="text-2xl font-light">{items.length}</div>
+          <div className="text-2xl font-light tabular-nums">{items.length}</div>
           <div className="text-sm text-muted-foreground mt-2">{items.filter(p => !p.hidden).length} visible on storefront</div>
         </div>
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 flex items-center gap-2 text-muted-foreground">
             <TrendingUp className="w-4 h-4" /> Highest Margin
           </h3>
           {items.length > 0 ? (
             <>
-              <div className="text-2xl font-light">
+              <div className="text-2xl font-light truncate">
                 {items.sort((a, b) => (parseFloat(b.price) - parseFloat(b.cost)) - (parseFloat(a.price) - parseFloat(a.cost)))[0]?.name}
               </div>
-              <div className="text-sm text-green-500 mt-2">
+              <div className="text-sm text-green-500 mt-2 tabular-nums">
                 €{(parseFloat(items[0]?.price || '0') - parseFloat(items[0]?.cost || '0')).toFixed(2)} / mo profit
               </div>
             </>
@@ -964,17 +964,17 @@ function ProductsInsights() {
             <div className="text-sm text-muted-foreground">No products yet</div>
           )}
         </div>
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-4 flex items-center gap-2 text-muted-foreground">
             <Clock className="w-4 h-4" /> Categories
           </h3>
-          <div className="text-2xl font-light">{new Set(items.map(p => p.category)).size}</div>
+          <div className="text-2xl font-light tabular-nums">{new Set(items.map(p => p.category)).size}</div>
           <div className="text-sm text-muted-foreground mt-2">unique categories</div>
         </div>
       </div>
 
       {items.length > 0 && (
-        <div className="border border-border p-5 bg-background">
+        <div className="rounded-2xl border border-border p-5 bg-card shadow-xs">
           <h3 className="text-sm font-medium mb-6 flex items-center gap-2">
             <BarChart2 className="w-4 h-4 text-muted-foreground" /> Margin Distribution
           </h3>
@@ -985,12 +985,12 @@ function ProductsInsights() {
               const pct = maxMargin > 0 ? (margin / maxMargin) * 100 : 0;
               return (
                 <div key={p.id}>
-                  <div className="flex justify-between text-sm mb-1">
+                  <div className="flex justify-between text-sm mb-1.5">
                     <span>{p.name}</span>
                     <span className="font-mono text-green-500">€{margin.toFixed(2)}</span>
                   </div>
-                  <div className="w-full bg-foreground/10 h-2">
-                    <div className="bg-foreground h-2" style={{ width: `${pct}%` }}></div>
+                  <div className="w-full bg-foreground/10 h-2.5 rounded-full overflow-hidden">
+                    <div className="bg-foreground h-2.5 rounded-full" style={{ width: `${pct}%` }}></div>
                   </div>
                 </div>
               );
@@ -1109,14 +1109,14 @@ function ProductsNew() {
 
   return (
     <Page title="Add New Retail Plan" requiredPermission="products.create">
-      <div className="bg-background border border-border w-full max-w-2xl">
+      <div className="bg-card rounded-2xl border border-border shadow-xs w-full max-w-2xl overflow-hidden">
         {/* Step Indicator Header */}
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-border overflow-x-auto">
           {steps.map((label, i) => (
             <button
               key={label}
               onClick={() => i < step && setStep(i)}
-              className={`flex-1 px-4 py-3 text-xs font-medium uppercase tracking-wider transition-colors ${
+              className={`flex-1 min-w-[110px] px-3 py-3 text-xs font-medium uppercase tracking-wider transition-colors ${
                 i === step ? 'bg-foreground text-background' :
                 i < step ? 'text-foreground cursor-pointer hover:bg-foreground/5' :
                 'text-muted-foreground'
@@ -1174,12 +1174,12 @@ function ProductsNew() {
                   type="text"
                   value={newPlan.name}
                   onChange={e => setNewPlan({ ...newPlan, name: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   placeholder="e.g. VaultScope VPS Pro"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase">Provider</label>
@@ -1192,7 +1192,7 @@ function ProductsNew() {
                   <select
                     value={newPlan.provider}
                     onChange={e => handleProviderChange(e.target.value)}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="hetzner_cloud">Hetzner Cloud (VPS)</option>
                     <option value="sftpgo">SFTPGo (Cloud Storage)</option>
@@ -1215,7 +1215,7 @@ function ProductsNew() {
                   <select
                     value={newPlan.category}
                     onChange={e => setNewPlan({ ...newPlan, category: e.target.value })}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="VPS">VPS</option>
                     <option value="Storage">Storage / SFTP</option>
@@ -1239,7 +1239,7 @@ function ProductsNew() {
                   type="text"
                   value={newPlan.target}
                   onChange={e => setNewPlan({ ...newPlan, target: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                   placeholder="e.g. cpx21 or sftp-250"
                 />
               </div>
@@ -1255,7 +1255,7 @@ function ProductsNew() {
                 <select
                   value={newPlan.serviceFormId}
                   onChange={e => setNewPlan({ ...newPlan, serviceFormId: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   <option value="">None (No configuration step required)</option>
                   {(serviceForms || []).map((f: any) => (
@@ -1288,7 +1288,7 @@ function ProductsNew() {
           {step === 2 && (
             <div className="space-y-5">
               <p className="text-sm text-muted-foreground">Set your pricing, margins, and availability.</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase">Wholesale Cost</label>
@@ -1304,7 +1304,7 @@ function ProductsNew() {
                       step="0.01"
                       value={newPlan.cost || ''}
                       onChange={e => setNewPlan({ ...newPlan, cost: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2.5 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                       placeholder="6.49"
                     />
                   </div>
@@ -1326,7 +1326,7 @@ function ProductsNew() {
                       step="0.01"
                       value={newPlan.price || ''}
                       onChange={e => setNewPlan({ ...newPlan, price: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2.5 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                       placeholder="9.99"
                     />
                   </div>
@@ -1363,7 +1363,7 @@ function ProductsNew() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase">Billing Cycle</label>
@@ -1375,7 +1375,7 @@ function ProductsNew() {
                   <select
                     value={newPlan.billingCycle}
                     onChange={e => setNewPlan({ ...newPlan, billingCycle: e.target.value })}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="Monthly">Monthly</option>
                     <option value="Yearly">Yearly</option>
@@ -1397,14 +1397,14 @@ function ProductsNew() {
                       step="0.01"
                       value={newPlan.setupFee || ''}
                       onChange={e => setNewPlan({ ...newPlan, setupFee: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2.5 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2.5 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <label className="text-xs font-medium text-muted-foreground uppercase">Trial Period (Days)</label>
@@ -1420,7 +1420,7 @@ function ProductsNew() {
                       min="0"
                       value={newPlan.trialDays || ''}
                       onChange={e => setNewPlan({ ...newPlan, trialDays: parseInt(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                       placeholder="0 (No trial)"
                     />
                   </div>
@@ -1447,7 +1447,7 @@ function ProductsNew() {
                   </span>
                 </div>
                 {newPlan.trialDays > 0 ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                         Trial Quota (GB)
@@ -1457,7 +1457,7 @@ function ProductsNew() {
                         min="1"
                         value={newPlan.trialQuotaGb ?? ''}
                         onChange={e => setNewPlan({ ...newPlan, trialQuotaGb: parseInt(e.target.value) || null })}
-                        className="w-full border border-border bg-background p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                        className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                         placeholder="e.g. 5 (during trial)"
                       />
                       <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -1473,7 +1473,7 @@ function ProductsNew() {
                         min="1"
                         value={newPlan.quotaGb ?? ''}
                         onChange={e => setNewPlan({ ...newPlan, quotaGb: parseInt(e.target.value) || null })}
-                        className="w-full border border-border bg-background p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                        className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                         placeholder="e.g. 150 (regular plan)"
                       />
                       <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -1491,7 +1491,7 @@ function ProductsNew() {
                       min="1"
                       value={newPlan.quotaGb ?? ''}
                       onChange={e => setNewPlan({ ...newPlan, quotaGb: parseInt(e.target.value) || null })}
-                      className="w-full border border-border bg-background p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                      className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                       placeholder="e.g. 150"
                     />
                     <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -1573,12 +1573,12 @@ function ProductsNew() {
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
-                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+                className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
               >
                 Back
               </button>
             ) : (
-              <Link to="/products" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+              <Link to="/products" className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5">
                 Cancel
               </Link>
             )}
@@ -1589,7 +1589,7 @@ function ProductsNew() {
                 type="button"
                 onClick={() => setStep(step + 1)}
                 disabled={!canAdvance()}
-                className="px-5 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -1598,7 +1598,7 @@ function ProductsNew() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {saving ? 'Publishing...' : 'Publish Plan'}
               </button>
@@ -1695,38 +1695,38 @@ function ProductsList() {
 
   return (
     <Page title="Products & Margin Tracking" requiredPermission="products.view">
-      <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-border pb-5">
         <p className="text-sm text-muted-foreground">Map your retail plans to underlying upstream infrastructure providers.</p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={syncReliableSiteNl}
             disabled={syncingRs}
-            className="flex items-center gap-2 border border-border px-4 py-2 text-sm hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Database className="w-4 h-4" />
             {syncingRs ? 'Syncing NL...' : 'Sync ReliableSite NL'}
           </button>
-          <Link to="/products/new" className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 transition-colors">
+          <Link to="/products/new" className="flex items-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors">
             <Plus className="w-4 h-4" /> Add Plan
           </Link>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 mb-6 bg-foreground/[0.02] border border-border p-3">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-card border border-border rounded-2xl p-3 shadow-xs">
         <div className="flex-1">
           <input
             type="text"
             placeholder="Search by plan name or API target..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+            className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           />
         </div>
         <select
           value={filterProvider}
           onChange={e => setFilterProvider(e.target.value)}
-          className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground w-48 shrink-0"
+          className="rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 sm:w-48 shrink-0 cursor-pointer"
         >
           <option value="all">All Providers</option>
           <option value="hetzner_cloud">Hetzner Cloud</option>
@@ -1741,81 +1741,85 @@ function ProductsList() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load products: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-12 text-muted-foreground">
-            <div className="col-span-3">Retail Plan</div>
-            <div className="col-span-2">Provider / Target</div>
-            <div className="col-span-1 text-center">Cycle</div>
-            <div className="col-span-2 text-right">Wholesale</div>
-            <div className="col-span-2 text-right">Retail</div>
-            <div className="text-right col-span-2">Margin & Actions</div>
-          </div>
-          {filteredProducts.map(p => {
-            const cost = parseFloat(p.cost);
-            const price = parseFloat(p.price);
-            const margin = price - cost;
-            const marginPct = cost > 0 ? Math.round((margin / cost) * 100) : 100;
-            const cycleLabel = p.billing_cycle === 'monthly' ? 'M' : p.billing_cycle === 'yearly' ? 'Y' : '1x';
-
-            return (
-              <div key={p.id} className={`p-4 text-sm grid grid-cols-12 items-center hover:bg-foreground/[0.02] ${p.hidden ? 'opacity-50' : ''}`}>
-                <div className="col-span-3 flex flex-col">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {p.hidden && <span title="Hidden Product"><EyeOff className="w-3 h-3 text-muted-foreground" /></span>}
-                    <span className="font-medium">{p.name}</span>
-                    {p.trial_days && p.trial_days > 0 ? (
-                      <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono">
-                        {p.trial_days}d trial
-                      </span>
-                    ) : null}
-                    {p.quota_gb ? (
-                      <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded font-mono">
-                        {p.trial_days && p.trial_days > 0 && p.trial_quota_gb ? `${p.trial_quota_gb}GB → ` : ''}{p.quota_gb}GB
-                      </span>
-                    ) : null}
-                  </div>
-                  <span className="text-xs text-muted-foreground">{p.category}</span>
-                </div>
-                <div className="col-span-2 flex flex-col">
-                  <span className="text-xs text-muted-foreground">{p.provider}</span>
-                  <span className="font-mono text-xs">{p.target}</span>
-                </div>
-                <div className="col-span-1 text-center text-xs text-muted-foreground">{cycleLabel}</div>
-                <div className="col-span-2 text-right text-muted-foreground">€{cost.toFixed(2)}</div>
-                <div className="col-span-2 text-right font-medium">
-                  €{price.toFixed(2)}
-                  {parseFloat(p.setup_fee) > 0 && <div className="text-[10px] text-muted-foreground font-normal">+ €{parseFloat(p.setup_fee).toFixed(2)} setup</div>}
-                </div>
-                <div className="text-right col-span-2 flex items-center justify-end gap-3">
-                  <div className="flex flex-col items-end">
-                    <span className="text-green-500 font-medium">+€{margin.toFixed(2)}</span>
-                    <span className="text-[10px] text-muted-foreground">{marginPct}% markup</span>
-                  </div>
-                  <button onClick={() => syncStock(p.id)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Sync Stock">
-                    Sync
-                  </button>
-                  <button onClick={() => openEditModal(p)} className="text-xs border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => handleDeleteProduct(p.id, p.name)} className="text-xs border border-border p-1.5 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors cursor-pointer" title="Delete Product">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[880px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-12 text-muted-foreground">
+                <div className="col-span-3">Retail Plan</div>
+                <div className="col-span-2">Provider / Target</div>
+                <div className="col-span-1 text-center">Cycle</div>
+                <div className="col-span-2 text-right">Wholesale</div>
+                <div className="col-span-2 text-right">Retail</div>
+                <div className="text-right col-span-2">Margin & Actions</div>
               </div>
-            );
-          })}
-          {filteredProducts.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              {items.length === 0 ? 'No products yet. Add your first plan.' : 'No products match your filters.'}
+              {filteredProducts.map(p => {
+                const cost = parseFloat(p.cost);
+                const price = parseFloat(p.price);
+                const margin = price - cost;
+                const marginPct = cost > 0 ? Math.round((margin / cost) * 100) : 100;
+                const cycleLabel = p.billing_cycle === 'monthly' ? 'M' : p.billing_cycle === 'yearly' ? 'Y' : '1x';
+
+                return (
+                  <div key={p.id} className={`p-4 text-sm grid grid-cols-12 items-center hover:bg-foreground/[0.025] transition-colors ${p.hidden ? 'opacity-50' : ''}`}>
+                    <div className="col-span-3 flex flex-col pr-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {p.hidden && <span title="Hidden Product"><EyeOff className="w-3 h-3 text-muted-foreground" /></span>}
+                        <span className="font-medium">{p.name}</span>
+                        {p.trial_days && p.trial_days > 0 ? (
+                          <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-mono">
+                            {p.trial_days}d trial
+                          </span>
+                        ) : null}
+                        {p.quota_gb ? (
+                          <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full font-mono">
+                            {p.trial_days && p.trial_days > 0 && p.trial_quota_gb ? `${p.trial_quota_gb}GB → ` : ''}{p.quota_gb}GB
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{p.category}</span>
+                    </div>
+                    <div className="col-span-2 flex flex-col">
+                      <span className="text-xs text-muted-foreground">{p.provider}</span>
+                      <span className="font-mono text-xs">{p.target}</span>
+                    </div>
+                    <div className="col-span-1 text-center text-xs text-muted-foreground">{cycleLabel}</div>
+                    <div className="col-span-2 text-right text-muted-foreground tabular-nums">€{cost.toFixed(2)}</div>
+                    <div className="col-span-2 text-right font-medium tabular-nums">
+                      €{price.toFixed(2)}
+                      {parseFloat(p.setup_fee) > 0 && <div className="text-[10px] text-muted-foreground font-normal">+ €{parseFloat(p.setup_fee).toFixed(2)} setup</div>}
+                    </div>
+                    <div className="text-right col-span-2 flex items-center justify-end gap-2">
+                      <div className="flex flex-col items-end">
+                        <span className="text-green-500 font-medium tabular-nums">+€{margin.toFixed(2)}</span>
+                        <span className="text-[10px] text-muted-foreground">{marginPct}% markup</span>
+                      </div>
+                      <button onClick={() => syncStock(p.id)} className="text-xs rounded-lg border border-border px-2 py-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Sync Stock">
+                        Sync
+                      </button>
+                      <button onClick={() => openEditModal(p)} className="text-xs rounded-lg border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit">
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => handleDeleteProduct(p.id, p.name)} className="text-xs rounded-lg border border-border p-1.5 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors cursor-pointer" title="Delete Product">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredProducts.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  {items.length === 0 ? 'No products yet. Add your first plan.' : 'No products match your filters.'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
       {/* EDIT RETAIL PLAN MODAL */}
       {isModalOpen && editPlan && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-background border border-border shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 w-full max-w-2xl max-h-[90dvh] overflow-y-auto animate-ui-scale">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-medium flex items-center gap-2">
                 <Server className="w-5 h-5 text-muted-foreground" /> Edit Retail Plan
@@ -1832,17 +1836,17 @@ function ProductsList() {
                   type="text"
                   value={editPlan.name}
                   onChange={e => setEditPlan({ ...editPlan, name: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Provider</label>
                   <select
                     value={editPlan.provider}
                     onChange={e => setEditPlan({ ...editPlan, provider: e.target.value })}
-                    className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="hetzner_cloud">Hetzner Cloud (VPS)</option>
                     <option value="sftpgo">SFTPGo (Cloud Storage)</option>
@@ -1859,7 +1863,7 @@ function ProductsList() {
                   <select
                     value={editPlan.category}
                     onChange={e => setEditPlan({ ...editPlan, category: e.target.value })}
-                    className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="VPS">VPS</option>
                     <option value="Storage">Storage / SFTP</option>
@@ -1875,7 +1879,7 @@ function ProductsList() {
                   type="text"
                   value={editPlan.target}
                   onChange={e => setEditPlan({ ...editPlan, target: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                  className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                 />
               </div>
 
@@ -1886,7 +1890,7 @@ function ProductsList() {
                 <select
                   value={editPlan.serviceFormId || ''}
                   onChange={e => setEditPlan({ ...editPlan, serviceFormId: e.target.value })}
-                  className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   <option value="">None (No configuration step required)</option>
                   {(serviceForms || []).map((f: any) => (
@@ -1910,7 +1914,7 @@ function ProductsList() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Wholesale Cost</label>
                   <div className="relative">
@@ -1920,7 +1924,7 @@ function ProductsList() {
                       step="0.01"
                       value={editPlan.cost || ''}
                       onChange={e => setEditPlan({ ...editPlan, cost: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                     />
                   </div>
                 </div>
@@ -1933,7 +1937,7 @@ function ProductsList() {
                       step="0.01"
                       value={editPlan.price || ''}
                       onChange={e => setEditPlan({ ...editPlan, price: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                     />
                   </div>
                   <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -1954,7 +1958,7 @@ function ProductsList() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Setup Fee</label>
                   <div className="relative">
@@ -1964,7 +1968,7 @@ function ProductsList() {
                       step="0.01"
                       value={editPlan.setupFee || ''}
                       onChange={e => setEditPlan({ ...editPlan, setupFee: parseFloat(e.target.value) || 0 })}
-                      className="w-full border border-border bg-transparent p-2 pl-7 text-sm focus:outline-none focus:border-foreground"
+                      className="w-full rounded-xl border border-border bg-background p-2 pl-7 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                     />
                   </div>
                 </div>
@@ -1973,7 +1977,7 @@ function ProductsList() {
                   <select
                     value={editPlan.billingCycle}
                     onChange={e => setEditPlan({ ...editPlan, billingCycle: e.target.value })}
-                    className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="Monthly">Monthly</option>
                     <option value="Yearly">Yearly</option>
@@ -1982,7 +1986,7 @@ function ProductsList() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Trial Period (Days)</label>
                   <input
@@ -1990,7 +1994,7 @@ function ProductsList() {
                     min="0"
                     value={editPlan.trialDays || ''}
                     onChange={e => setEditPlan({ ...editPlan, trialDays: parseInt(e.target.value) || 0 })}
-                    className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                     placeholder="0 (No trial)"
                   />
                 </div>
@@ -2016,7 +2020,7 @@ function ProductsList() {
                   </span>
                 </div>
                 {editPlan.trialDays > 0 ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
                         Trial Quota (GB)
@@ -2026,7 +2030,7 @@ function ProductsList() {
                         min="1"
                         value={editPlan.trialQuotaGb ?? ''}
                         onChange={e => setEditPlan({ ...editPlan, trialQuotaGb: parseInt(e.target.value) || null })}
-                        className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                        className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                         placeholder="e.g. 5 (during trial)"
                       />
                       <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -2042,7 +2046,7 @@ function ProductsList() {
                         min="1"
                         value={editPlan.quotaGb ?? ''}
                         onChange={e => setEditPlan({ ...editPlan, quotaGb: parseInt(e.target.value) || null })}
-                        className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                        className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                         placeholder="e.g. 150 (regular plan)"
                       />
                       <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -2060,7 +2064,7 @@ function ProductsList() {
                       min="1"
                       value={editPlan.quotaGb ?? ''}
                       onChange={e => setEditPlan({ ...editPlan, quotaGb: parseInt(e.target.value) || null })}
-                      className="w-full border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                      className="w-full rounded-xl border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                       placeholder="e.g. 150"
                     />
                     <span className="text-[10px] text-muted-foreground mt-1 block">
@@ -2071,11 +2075,11 @@ function ProductsList() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-8 border-t border-border pt-4">
+            <div className="flex flex-wrap justify-between items-center gap-3 mt-8 border-t border-border pt-4">
               <button
                 type="button"
                 onClick={() => handleDeleteProduct(editPlan.id, editPlan.name)}
-                className="px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10 border border-red-500/20 transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl text-xs text-red-500 hover:bg-red-500/10 border border-red-500/20 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete Plan
               </button>
@@ -2083,7 +2087,7 @@ function ProductsList() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2091,7 +2095,7 @@ function ProductsList() {
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>

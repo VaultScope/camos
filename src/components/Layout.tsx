@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext, memo } from 'react';
 import { Link, useLocation, useInRouterContext } from 'react-router-dom';
 import {
   Users,
@@ -24,60 +24,130 @@ import {
   HelpCircle,
   ChevronRight,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Menu,
+  X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { getStoredClaims, logout, hasPermission } from '../lib/auth';
 import { useApi } from '../lib/hooks';
 import { isSafeHttpUrl } from '../lib/url';
+import { prefetchRoute } from '../lib/routePrefetch';
 import type { InternalTool, Role } from '../lib/types';
 import { CommandPalette } from './CommandPalette';
 import { useExplainMode } from './HelpTooltip';
 
-export function SidebarItem({
+interface MobileNavContextValue {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+}
+
+const MobileNavContext = createContext<MobileNavContextValue>({
+  isOpen: false,
+  open: () => {},
+  close: () => {},
+  toggle: () => {},
+});
+
+export function useMobileNav() {
+  return useContext(MobileNavContext);
+}
+
+export function MobileNavProvider({ children }: { children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const open = useCallback(() => setIsOpen(true), []);
+  const close = useCallback(() => setIsOpen(false), []);
+  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isOpen]);
+
+  const value = useMemo(
+    () => ({ isOpen, open, close, toggle }),
+    [isOpen, open, close, toggle]
+  );
+
+  return <MobileNavContext.Provider value={value}>{children}</MobileNavContext.Provider>;
+}
+
+export const SidebarItem = memo(function SidebarItem({
   link,
   location,
   isExpanded,
-  onToggle
+  onToggle,
+  onNavigate,
 }: {
   link: any;
   location: any;
   isExpanded: boolean;
   onToggle: () => void;
+  onNavigate?: () => void;
 }) {
-  const isActive = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
+  const isActive =
+    location.pathname === link.path ||
+    (link.path !== '/' && location.pathname.startsWith(link.path));
+
+  const handlePrefetch = () => {
+    if (link.path) prefetchRoute(link.path);
+  };
 
   return (
-    <div className="relative">
+    <div className="relative px-2.5 my-0.5">
       {link.subItems ? (
         <button
+          type="button"
           onClick={onToggle}
-          className={`w-full flex items-center justify-between px-6 py-2.5 text-sm transition-colors cursor-pointer ${
+          onMouseEnter={handlePrefetch}
+          onFocus={handlePrefetch}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm rounded-xl transition-colors duration-150 cursor-pointer ${
             isActive
-              ? 'bg-foreground/5 font-medium border-r-2 border-foreground text-foreground'
-              : 'text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground'
+              ? 'bg-foreground/[0.08] font-medium text-foreground shadow-2xs'
+              : 'text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground'
           }`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <link.icon className="w-4 h-4 shrink-0" />
             <span className="truncate">{link.name}</span>
           </div>
-          <ChevronDown className={`w-3 h-3 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-150 shrink-0 ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+          />
         </button>
       ) : (
         <Link
           to={link.path}
-          className={`flex items-center justify-between px-6 py-2.5 text-sm transition-colors ${
+          onClick={onNavigate}
+          onMouseEnter={handlePrefetch}
+          onFocus={handlePrefetch}
+          className={`flex items-center justify-between px-3.5 py-2.5 text-sm rounded-xl transition-colors duration-150 ${
             isActive
-              ? 'bg-foreground/5 font-medium border-r-2 border-foreground text-foreground'
-              : 'text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground'
+              ? 'bg-foreground/[0.08] font-medium text-foreground shadow-2xs'
+              : 'text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground'
           }`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <link.icon className="w-4 h-4 shrink-0" />
             <span className="truncate">{link.name}</span>
           </div>
           {link.badge && (
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-foreground/10 text-muted-foreground">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-foreground/10 text-muted-foreground">
               {link.badge}
             </span>
           )}
@@ -86,19 +156,24 @@ export function SidebarItem({
 
       {link.subItems && (
         <div
-          className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          className={`overflow-hidden transition-[max-height,opacity] duration-150 ease-out ${
             isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="bg-foreground/[0.02] border-l-2 border-foreground/10 ml-8 pl-4 py-1.5 space-y-1.5 mb-1">
+          <div className="ml-5 pl-3 border-l border-border/80 py-1 my-1 space-y-0.5">
             {link.subItems.map((sub: any) => {
               const isSubActive = location.pathname === sub.path;
               return (
                 <Link
                   key={sub.name}
                   to={sub.path}
-                  className={`block text-xs transition-colors py-1 ${
-                    isSubActive ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
+                  onClick={onNavigate}
+                  onMouseEnter={() => prefetchRoute(sub.path)}
+                  onFocus={() => prefetchRoute(sub.path)}
+                  className={`block text-xs px-3 py-1.5 rounded-lg transition-colors duration-150 ${
+                    isSubActive
+                      ? 'bg-foreground/[0.07] text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground'
                   }`}
                 >
                   {sub.name}
@@ -110,17 +185,23 @@ export function SidebarItem({
       )}
     </div>
   );
-}
+});
 
 export function Sidebar() {
   const location = useLocation();
+  const { isOpen, close } = useMobileNav();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const { data: internalTools } = useApi<InternalTool[]>('/admin/internal-tools');
   const { data: roles } = useApi<Role[]>('/admin/staff/roles');
 
+  // Auto-close mobile drawer whenever route changes
+  useEffect(() => {
+    close();
+  }, [location.pathname, close]);
+
   const claims = getStoredClaims();
-  const currentRole = roles?.find(r => r.name === claims?.role);
+  const currentRole = roles?.find((r) => r.name === claims?.role);
   const hasResolvedPermissions = Boolean(currentRole || Array.isArray(claims?.permissions));
   const userPermissions =
     claims?.role === 'Owner' || claims?.permissions?.includes('*')
@@ -129,7 +210,7 @@ export function Sidebar() {
 
   const visibleTools =
     internalTools?.filter(
-      t =>
+      (t) =>
         (userPermissions.includes('*') || userPermissions.includes(t.required_permission)) &&
         isSafeHttpUrl(t.url)
     ) || [];
@@ -143,9 +224,9 @@ export function Sidebar() {
     return userPermissions.includes(permission);
   };
 
-  const toggleItem = (name: string) => {
-    setExpandedItem(prev => (prev === name ? null : name));
-  };
+  const toggleItem = useCallback((name: string) => {
+    setExpandedItem((prev) => (prev === name ? null : name));
+  }, []);
 
   const rawSections: Array<{
     label: string | null;
@@ -252,165 +333,296 @@ export function Sidebar() {
   ];
 
   const sections = rawSections
-    .map(section => ({
+    .map((section) => ({
       ...section,
       items: section.items
-        .filter(item => canViewNavPermission(item.permission))
-        .map(item =>
+        .filter((item) => canViewNavPermission(item.permission))
+        .map((item) =>
           item.subItems
-            ? { ...item, subItems: item.subItems.filter(sub => canViewNavPermission(sub.permission)) }
+            ? { ...item, subItems: item.subItems.filter((sub) => canViewNavPermission(sub.permission)) }
             : item
         )
-        .filter(item => !item.subItems || item.subItems.length > 0),
+        .filter((item) => !item.subItems || item.subItems.length > 0),
     }))
-    .filter(section => section.items.length > 0);
+    .filter((section) => section.items.length > 0);
 
   return (
-    <div className="w-64 border-r border-border h-screen bg-background flex flex-col fixed z-20 select-none">
-      <div className="p-5 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/camos.png" alt="CAMOS Logo" className="w-9 h-9 object-contain shrink-0" />
-          <div className="min-w-0">
-            <h1 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
-              CAMOS <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-foreground/10 text-muted-foreground">v2.5</span>
-            </h1>
-            <p className="text-[10px] text-muted-foreground truncate">Operations Control Plane</p>
-          </div>
-        </div>
-      </div>
+    <>
+      {/* Mobile / Tablet Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/45 backdrop-blur-xs lg:hidden animate-ui-fade"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
 
-      <div className="flex-1 overflow-y-auto py-2">
-        {sections.map((section, si) => (
-          <div key={si} className={section.label ? 'mt-2' : ''}>
-            {section.label && (
-              <div className="px-6 pt-3 pb-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                  {section.label}
+      <aside
+        aria-label="Primary navigation"
+        className={`w-64 max-w-[82vw] border-r border-border h-dvh bg-background/95 backdrop-blur-md flex flex-col fixed inset-y-0 left-0 z-40 select-none transition-transform duration-200 ease-out rounded-r-2xl lg:rounded-none shadow-2xl lg:shadow-none ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-2">
+          <Link to="/" onClick={close} className="flex items-center gap-3 min-w-0">
+            <img
+              src="/camos.png"
+              alt="CAMOS Logo"
+              className="w-9 h-9 object-contain shrink-0 rounded-xl"
+              decoding="async"
+            />
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-1.5">
+                CAMOS{' '}
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-foreground/10 text-muted-foreground">
+                  v2.5
                 </span>
-              </div>
-            )}
-            {section.items.map(link => (
-              <SidebarItem
-                key={link.name}
-                link={link}
-                location={location}
-                isExpanded={expandedItem === link.name}
-                onToggle={() => toggleItem(link.name)}
-              />
-            ))}
-          </div>
-        ))}
-
-        {visibleTools.length > 0 && (
-          <div className="mt-3">
-            <div className="px-6 pt-3 pb-1">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                Internal Tools
-              </span>
+              </h1>
+              <p className="text-[10px] text-muted-foreground truncate">Operations Control Plane</p>
             </div>
-            {visibleTools.map(tool => (
-              <a
-                key={tool.id}
-                href={tool.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-6 py-2.5 text-sm transition-colors text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground"
-              >
-                <ExternalLink className="w-4 h-4 shrink-0" /> <span className="truncate">{tool.name}</span>
-              </a>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-2 border-t border-border/40 pt-2">
-          <div className="px-6 pt-2 pb-1">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-              Community
-            </span>
-          </div>
-          <a
-            href="https://discord.gg/84kMAY2aKm"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 px-6 py-2 text-xs transition-colors text-muted-foreground hover:bg-foreground/[0.02] hover:text-foreground"
-          >
-            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
-            <span className="truncate">Discord Server</span>
-            <ExternalLink className="w-3 h-3 ml-auto opacity-40" />
-          </a>
-        </div>
-      </div>
-
-      <div className="p-4 border-t border-border bg-foreground/[0.01]">
-        <div className="flex items-center justify-between text-sm">
-          <Link to="/staff/account" className="flex flex-col hover:opacity-80 transition-opacity min-w-0 mr-2">
-            <span className="font-medium text-xs text-foreground truncate">{claims?.email?.split('@')[0] || 'Unknown'}</span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">{claims?.role || 'No Role'}</span>
           </Link>
+
           <button
-            onClick={logout}
-            className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded hover:bg-foreground/10 transition-colors"
-            title="Sign Out"
-            aria-label="Sign out"
+            type="button"
+            onClick={close}
+            aria-label="Close navigation menu"
+            className="lg:hidden p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
         </div>
-      </div>
-    </div>
+
+        <nav className="flex-1 overflow-y-auto py-3">
+          {sections.map((section, si) => (
+            <div key={si} className={section.label ? 'mt-3' : ''}>
+              {section.label && (
+                <div className="px-5 pt-2 pb-1">
+                  <span className="text-[10px] font-semibold text-muted-foreground/80 uppercase tracking-widest">
+                    {section.label}
+                  </span>
+                </div>
+              )}
+              {section.items.map((link) => (
+                <SidebarItem
+                  key={link.name}
+                  link={link}
+                  location={location}
+                  isExpanded={expandedItem === link.name}
+                  onToggle={() => toggleItem(link.name)}
+                  onNavigate={close}
+                />
+              ))}
+            </div>
+          ))}
+
+          {visibleTools.length > 0 && (
+            <div className="mt-3">
+              <div className="px-5 pt-2 pb-1">
+                <span className="text-[10px] font-semibold text-muted-foreground/80 uppercase tracking-widest">
+                  Internal Tools
+                </span>
+              </div>
+              <div className="px-2.5 space-y-0.5">
+                {visibleTools.map((tool) => (
+                  <a
+                    key={tool.id}
+                    href={tool.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl transition-colors duration-150 text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+                  >
+                    <ExternalLink className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{tool.name}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-3 mx-3 border-t border-border/60 pt-3">
+            <div className="px-2.5 pb-1">
+              <span className="text-[10px] font-semibold text-muted-foreground/80 uppercase tracking-widest">
+                Community
+              </span>
+            </div>
+            <a
+              href="https://discord.gg/84kMAY2aKm"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 px-3 py-2 text-xs rounded-xl transition-colors duration-150 text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+            >
+              <MessageSquare className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+              <span className="truncate">Discord Server</span>
+              <ExternalLink className="w-3 h-3 ml-auto opacity-40 shrink-0" />
+            </a>
+          </div>
+        </nav>
+
+        <div className="p-3 border-t border-border bg-foreground/[0.015]">
+          <div className="flex items-center justify-between text-sm px-2.5 py-2 rounded-xl bg-foreground/[0.03] border border-border/60">
+            <Link
+              to="/staff/account"
+              onClick={close}
+              className="flex flex-col hover:opacity-80 transition-opacity min-w-0 mr-2"
+            >
+              <span className="font-medium text-xs text-foreground truncate">
+                {claims?.email?.split('@')[0] || 'Unknown'}
+              </span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">
+                {claims?.role || 'No Role'}
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-lg hover:bg-foreground/10 transition-colors shrink-0"
+              title="Sign Out"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
 
-function BreadcrumbLink({ to, children, className, inRouter }: { to: string; children: React.ReactNode; className?: string; inRouter: boolean }) {
+function BreadcrumbLink({
+  to,
+  children,
+  className,
+  inRouter,
+}: {
+  to: string;
+  children: React.ReactNode;
+  className?: string;
+  inRouter: boolean;
+}) {
   if (inRouter) {
-    return <Link to={to} className={className}>{children}</Link>;
+    return (
+      <Link to={to} className={className}>
+        {children}
+      </Link>
+    );
   }
   return <span className={className}>{children}</span>;
+}
+
+function useThemeMode() {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const toggleTheme = useCallback(() => {
+    setIsDark((prev) => {
+      const next = !prev;
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.toggle('dark', next);
+      }
+      try {
+        localStorage.setItem('camos_theme', next ? 'dark' : 'light');
+      } catch {
+        // Ignore storage quota / private mode issues
+      }
+      return next;
+    });
+  }, []);
+
+  return { isDark, toggleTheme };
 }
 
 function TopNavWithRouter({ title: _title }: { title: string }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const location = useLocation();
   const { explainMode, toggleExplainMode } = useExplainMode();
+  const { toggle: toggleMobileNav } = useMobileNav();
+  const { isDark, toggleTheme } = useThemeMode();
+
+  // Global Cmd/Ctrl + K shortcut to open/close command palette
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        // Don't hijack Ctrl+K inside markdown/rich text editors
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+        e.preventDefault();
+        setIsCommandOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const pathSegments = location.pathname.split('/').filter(Boolean);
 
   return (
     <>
-      <header className="sticky top-0 z-10 w-full h-14 bg-background/90 backdrop-blur-md border-b border-border px-8 flex items-center justify-between">
-        {/* Left: Breadcrumbs & Page Title */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <BreadcrumbLink to="/" inRouter={true} className="hover:text-foreground transition-colors font-medium">CAMOS</BreadcrumbLink>
-          {pathSegments.length > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground/40" />}
-          {pathSegments.map((seg, idx) => {
-            const isLast = idx === pathSegments.length - 1;
-            const path = `/${pathSegments.slice(0, idx + 1).join('/')}`;
-            return (
-              <React.Fragment key={path}>
-                {isLast ? (
-                  <span className="text-foreground font-semibold capitalize">{seg.replace(/-/g, ' ')}</span>
-                ) : (
-                  <>
-                    <BreadcrumbLink to={path} inRouter={true} className="hover:text-foreground transition-colors capitalize">{seg}</BreadcrumbLink>
-                    <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
-                  </>
-                )}
-              </React.Fragment>
-            );
-          })}
+      <header className="sticky top-0 z-20 w-full h-14 bg-background/85 backdrop-blur-md border-b border-border px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2">
+        {/* Left: Mobile Drawer Toggle + Breadcrumbs */}
+        <div className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={toggleMobileNav}
+            aria-label="Open navigation menu"
+            className="lg:hidden p-2 -ml-1 rounded-xl border border-border bg-card text-foreground hover:bg-foreground/[0.05] transition-colors cursor-pointer shrink-0"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+            <BreadcrumbLink
+              to="/"
+              inRouter={true}
+              className="hover:text-foreground transition-colors font-semibold shrink-0"
+            >
+              CAMOS
+            </BreadcrumbLink>
+            {pathSegments.length > 0 && (
+              <ChevronRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+            )}
+            {pathSegments.map((seg, idx) => {
+              const isLast = idx === pathSegments.length - 1;
+              const path = `/${pathSegments.slice(0, idx + 1).join('/')}`;
+              return (
+                <React.Fragment key={path}>
+                  {isLast ? (
+                    <span className="text-foreground font-semibold capitalize truncate">
+                      {seg.replace(/-/g, ' ')}
+                    </span>
+                  ) : (
+                    <>
+                      <BreadcrumbLink
+                        to={path}
+                        inRouter={true}
+                        className="hover:text-foreground transition-colors capitalize truncate hidden sm:inline"
+                      >
+                        {seg}
+                      </BreadcrumbLink>
+                      <ChevronRight className="w-3 h-3 text-muted-foreground/40 shrink-0 hidden sm:inline" />
+                    </>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right: Quick Search + Explain Mode Toggle + API Status */}
-        <div className="flex items-center gap-3">
+        {/* Right: Quick Search + Explain Mode + Theme Toggle + API Status */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Quick Search Button */}
           <button
             type="button"
             onClick={() => setIsCommandOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground bg-foreground/[0.03] hover:bg-foreground/[0.08] hover:text-foreground border border-border rounded-lg transition-colors cursor-pointer"
+            aria-label="Quick search"
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 text-xs text-muted-foreground bg-foreground/[0.03] hover:bg-foreground/[0.07] hover:text-foreground border border-border rounded-xl transition-colors duration-150 cursor-pointer"
           >
-            <Search className="w-3.5 h-3.5" />
+            <Search className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden sm:inline">Search CAMOS...</span>
-            <kbd className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-foreground/10 border border-border/60">
+            <kbd className="hidden md:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-foreground/10 border border-border/60">
               Ctrl K
             </kbd>
           </button>
@@ -419,19 +631,30 @@ function TopNavWithRouter({ title: _title }: { title: string }) {
           <button
             type="button"
             onClick={toggleExplainMode}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl border transition-colors duration-150 cursor-pointer ${
               explainMode
-                ? 'bg-amber-500/15 text-amber-500 border-amber-500/40 shadow-sm'
-                : 'text-muted-foreground border-border hover:text-foreground hover:bg-foreground/[0.03]'
+                ? 'bg-amber-500/15 text-amber-500 border-amber-500/40 shadow-xs'
+                : 'text-muted-foreground border-border hover:text-foreground hover:bg-foreground/[0.04]'
             }`}
             title="Toggle interactive help tooltips on all fields and metrics"
           >
-            <HelpCircle className={`w-3.5 h-3.5 ${explainMode ? 'animate-spin' : ''}`} />
+            <HelpCircle className={`w-3.5 h-3.5 shrink-0 ${explainMode ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">{explainMode ? 'Help Hints: ON' : 'Explain UI'}</span>
           </button>
 
+          {/* Theme Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-150 cursor-pointer"
+          >
+            {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
+
           {/* System Heartbeat Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-mono text-emerald-500 bg-emerald-500/10 border border-emerald-500/20">
+          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono text-emerald-500 bg-emerald-500/10 border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>API Online</span>
           </div>
@@ -445,9 +668,9 @@ function TopNavWithRouter({ title: _title }: { title: string }) {
 
 function TopNavStatic({ title: _title }: { title: string }) {
   return (
-    <header className="sticky top-0 z-10 w-full h-14 bg-background/90 backdrop-blur-md border-b border-border px-8 flex items-center justify-between">
+    <header className="sticky top-0 z-20 w-full h-14 bg-background/85 backdrop-blur-md border-b border-border px-4 sm:px-6 lg:px-8 flex items-center justify-between">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="hover:text-foreground transition-colors font-medium">CAMOS</span>
+        <span className="hover:text-foreground transition-colors font-semibold">CAMOS</span>
       </div>
     </header>
   );
@@ -472,9 +695,11 @@ export function Page({
 }) {
   if (requiredPermission && !hasPermission(requiredPermission)) {
     return (
-      <div className="ml-64 p-8 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+      <div className="lg:ml-64 px-4 py-8 sm:p-8 min-h-dvh flex items-center justify-center">
+        <div className="text-center max-w-md w-full rounded-2xl border border-border bg-card p-8 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-foreground/5 border border-border flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-6 h-6 text-muted-foreground" />
+          </div>
           <h2 className="text-xl font-medium mb-2">Access Denied</h2>
           <p className="text-sm text-muted-foreground">
             You do not have the required permissions ({requiredPermission}) to view this page.
@@ -485,11 +710,13 @@ export function Page({
   }
 
   return (
-    <div className="ml-64 min-h-screen flex flex-col">
+    <div className="lg:ml-64 min-h-dvh flex flex-col min-w-0">
       <TopNav title={title} />
-      <div className="p-8 flex-1">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-light tracking-tight text-foreground">{title}</h2>
+      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7 flex-1 w-full max-w-[1600px] mx-auto min-w-0">
+        <div className="mb-5 sm:mb-6 flex items-center justify-between gap-4">
+          <h2 className="text-xl sm:text-2xl font-light tracking-tight text-foreground truncate">
+            {title}
+          </h2>
         </div>
         {children}
       </div>

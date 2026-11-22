@@ -174,28 +174,28 @@ export default function BillingInvoices() {
 
   return (
     <Page title="Invoices" requiredPermission="invoices.view">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <p className="text-sm text-muted-foreground">Manage and generate customer invoices.</p>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" /> Create Invoice
         </button>
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5 bg-card border border-border rounded-2xl p-3 shadow-xs">
         <input
           type="text"
           placeholder="Search invoices..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="flex-1 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          className="flex-1 rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+          className="rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 sm:w-44 cursor-pointer"
         >
           <option value="all">All Status</option>
           <option value="draft">Draft</option>
@@ -210,86 +210,90 @@ export default function BillingInvoices() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load invoices: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-6 text-muted-foreground">
-            <div>Invoice</div>
-            <div>Customer</div>
-            <div>Amount</div>
-            <div>Status</div>
-            <div>Due Date</div>
-            <div className="text-right">Actions</div>
-          </div>
-          {filteredInvoices.map(inv => (
-            <div key={inv.id} className="p-4 text-sm grid grid-cols-6 items-center hover:bg-foreground/[0.02]">
-              <div className="font-mono text-xs">{inv.invoice_number}</div>
-              <div>{getCustomerName(inv.customer_id)}</div>
-              <div className="font-medium">€{parseFloat(inv.total).toFixed(2)}</div>
-              <div>
-                <span
-                  className={`text-[10px] px-2 py-0.5 border uppercase ${
-                    inv.status === 'paid'
-                      ? 'border-green-500/30 text-green-500'
-                      : inv.status === 'pending'
-                      ? 'border-blue-500/30 text-blue-500'
-                      : inv.status === 'overdue'
-                      ? 'border-red-500/30 text-red-500'
-                      : 'border-muted-foreground/30 text-muted-foreground'
-                  }`}
-                >
-                  {inv.status}
-                </span>
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[740px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-6 text-muted-foreground">
+                <div>Invoice</div>
+                <div>Customer</div>
+                <div>Amount</div>
+                <div>Status</div>
+                <div>Due Date</div>
+                <div className="text-right">Actions</div>
               </div>
-              <div className="text-muted-foreground">{inv.due_date}</div>
-              <div className="text-right space-x-2">
-                <button
-                  onClick={() => handleDownloadPdf(inv.id, inv.invoice_number)}
-                  className="text-xs px-2 py-1 border border-border hover:bg-foreground/5"
-                  title="Download PDF"
-                >
-                  PDF
-                </button>
-                {inv.status === 'draft' && (
-                  <>
-                    <button onClick={() => handleSend(inv.id)} className="text-xs px-2 py-1 border border-border hover:bg-foreground/5">
-                      Send
+              {filteredInvoices.map(inv => (
+                <div key={inv.id} className="p-4 text-sm grid grid-cols-6 items-center hover:bg-foreground/[0.025] transition-colors">
+                  <div className="font-mono text-xs">{inv.invoice_number}</div>
+                  <div className="truncate pr-2">{getCustomerName(inv.customer_id)}</div>
+                  <div className="font-medium tabular-nums">€{parseFloat(inv.total).toFixed(2)}</div>
+                  <div>
+                    <span
+                      className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase font-medium ${
+                        inv.status === 'paid'
+                          ? 'border-green-500/30 bg-green-500/10 text-green-500'
+                          : inv.status === 'pending'
+                          ? 'border-blue-500/30 bg-blue-500/10 text-blue-500'
+                          : inv.status === 'overdue'
+                          ? 'border-red-500/30 bg-red-500/10 text-red-500'
+                          : 'border-muted-foreground/30 bg-foreground/5 text-muted-foreground'
+                      }`}
+                    >
+                      {inv.status}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground font-mono text-xs">{inv.due_date}</div>
+                  <div className="text-right flex items-center justify-end gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => handleDownloadPdf(inv.id, inv.invoice_number)}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
+                      title="Download PDF"
+                    >
+                      PDF
                     </button>
-                    <button onClick={() => handleDelete(inv.id)} className="text-xs px-2 py-1 border border-red-500/30 text-red-500 hover:bg-red-500/5">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {(inv.status === 'pending' || inv.status === 'overdue') && (
-                  <button onClick={() => handleMarkPaid(inv.id)} className="text-xs px-2 py-1 border border-green-500/30 text-green-500 hover:bg-green-500/5">
-                    Mark Paid
-                  </button>
-                )}
-              </div>
+                    {inv.status === 'draft' && (
+                      <>
+                        <button onClick={() => handleSend(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
+                          Send
+                        </button>
+                        <button onClick={() => handleDelete(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer">
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {(inv.status === 'pending' || inv.status === 'overdue') && (
+                      <button onClick={() => handleMarkPaid(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-green-500/30 text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer">
+                        Mark Paid
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {filteredInvoices.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">No invoices match your filters.</div>
+              )}
             </div>
-          ))}
-          {filteredInvoices.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">No invoices match your filters.</div>
-          )}
+          </div>
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background border border-border p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 max-w-2xl w-full max-h-[90dvh] overflow-y-auto animate-ui-scale">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Create Invoice</h3>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Customer *</label>
                   <select
                     value={form.customer_id}
                     onChange={e => setForm({ ...form, customer_id: e.target.value })}
-                    className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   >
                     <option value="">Select customer...</option>
                     {(customers || []).map(c => (
@@ -305,7 +309,7 @@ export default function BillingInvoices() {
                     type="date"
                     value={form.due_date}
                     onChange={e => setForm({ ...form, due_date: e.target.value })}
-                    className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                    className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   />
                 </div>
               </div>
@@ -317,47 +321,49 @@ export default function BillingInvoices() {
                   value={form.tax_rate}
                   onChange={e => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })}
                   step="0.01"
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
 
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-sm font-medium">Line Items</label>
-                  <button onClick={handleAddLineItem} className="text-xs px-2 py-1 border border-border hover:bg-foreground/5">
+                  <button onClick={handleAddLineItem} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 cursor-pointer">
                     Add Line
                   </button>
                 </div>
                 <div className="space-y-2">
                   {form.line_items.map((item, idx) => (
-                    <div key={idx} className="flex gap-2">
+                    <div key={idx} className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         placeholder="Description"
                         value={item.description}
                         onChange={e => handleUpdateLineItem(idx, 'description', e.target.value)}
-                        className="flex-1 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                        className="flex-1 rounded-xl bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                       />
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={e => handleUpdateLineItem(idx, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-20 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Price"
-                        value={item.unit_price}
-                        onChange={e => handleUpdateLineItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                        step="0.01"
-                        className="w-28 bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
-                      />
-                      {form.line_items.length > 1 && (
-                        <button onClick={() => handleRemoveLineItem(idx)} className="px-2 text-red-500 hover:bg-red-500/5">
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={e => handleUpdateLineItem(idx, 'quantity', parseInt(e.target.value) || 1)}
+                          className="w-20 rounded-xl bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={item.unit_price}
+                          onChange={e => handleUpdateLineItem(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                          step="0.01"
+                          className="w-28 rounded-xl bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
+                        />
+                        {form.line_items.length > 1 && (
+                          <button onClick={() => handleRemoveLineItem(idx)} className="px-2 rounded-xl text-red-500 hover:bg-red-500/10 cursor-pointer">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -366,15 +372,15 @@ export default function BillingInvoices() {
               <div className="border-t border-border pt-3 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal:</span>
-                  <span>€{subtotal.toFixed(2)}</span>
+                  <span className="tabular-nums">€{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tax ({form.tax_rate}%):</span>
-                  <span>€{taxAmount.toFixed(2)}</span>
+                  <span className="tabular-nums">€{taxAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-medium text-base pt-2 border-t border-border">
                   <span>Total:</span>
-                  <span>€{total.toFixed(2)}</span>
+                  <span className="tabular-nums">€{total.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -384,22 +390,22 @@ export default function BillingInvoices() {
                   value={form.notes}
                   onChange={e => setForm({ ...form, notes: e.target.value })}
                   rows={3}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground resize-none"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 resize-none"
                   placeholder="Internal notes..."
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5 cursor-pointer">
+                Cancel
+              </button>
               <button
                 onClick={handleCreate}
                 disabled={!form.customer_id || form.line_items.some(i => !i.description.trim()) || creating}
-                className="px-4 py-2 bg-foreground text-background text-sm hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
               >
                 {creating ? 'Creating...' : 'Create Invoice'}
-              </button>
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5">
-                Cancel
               </button>
             </div>
           </div>

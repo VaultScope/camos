@@ -89,68 +89,68 @@ export default function Mailboxes() {
   const updateField = (field: keyof Mailbox, value: any) => {
     if (editing) {
       setEditing({ ...editing, [field]: value });
-      if (isNew) setTestState('idle'); // reset test on any change
+      if (isNew) setTestState('idle');
     }
   };
 
   if (editing) {
     return (
       <Page title={isNew ? 'New Mailbox' : 'Edit Mailbox'} requiredPermission="mail.manage">
-        <button onClick={() => { setEditing(null); setTestState('idle'); }} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer">
+        <button onClick={() => { setEditing(null); setTestState('idle'); }} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-5 cursor-pointer">
           <ArrowLeft className="w-4 h-4" /> Back to mailboxes
         </button>
 
-        <div className="max-w-2xl border border-border bg-background p-6">
+        <div className="max-w-2xl rounded-2xl border border-border bg-card shadow-xs p-5 sm:p-6">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Name</label>
-                <input type="text" value={editing.name || ''} onChange={e => updateField('name', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" placeholder="e.g. Support" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Name</label>
+                <input type="text" value={editing.name || ''} onChange={e => updateField('name', e.target.value)} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50" placeholder="e.g. Support" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP User / From Address</label>
-                <input type="text" value={editing.user_name || ''} onChange={e => updateField('user_name', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="support@example.com" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP User / From Address</label>
+                <input type="text" value={editing.user_name || ''} onChange={e => updateField('user_name', e.target.value)} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono" placeholder="support@example.com" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Host</label>
-                <input type="text" value={editing.host || ''} onChange={e => updateField('host', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="smtp.example.com" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Host</label>
+                <input type="text" value={editing.host || ''} onChange={e => updateField('host', e.target.value)} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono" placeholder="smtp.example.com" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Port</label>
-                <input type="number" value={editing.port || 587} onChange={e => updateField('port', parseInt(e.target.value) || 587)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Port</label>
+                <input type="number" value={editing.port || 587} onChange={e => updateField('port', parseInt(e.target.value) || 587)} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Password</label>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Password</label>
               <input
                 type="password"
                 value={editing.password || ''}
                 onChange={e => updateField('password', e.target.value)}
                 placeholder={isNew ? 'Enter SMTP password' : 'Leave blank to keep existing password'}
                 autoComplete="new-password"
-                className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
               />
             </div>
 
             {/* Test Connection */}
-            <div className="border border-border p-4 bg-foreground/[0.02]">
+            <div className="rounded-xl border border-border p-4 bg-foreground/[0.025]">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-3">Test Connection</h4>
-              <div className="flex gap-2 mb-2">
+              <div className="flex flex-col sm:flex-row gap-2 mb-2">
                 <input
                   type="email"
                   value={testEmail}
                   onChange={e => setTestEmail(e.target.value)}
                   placeholder="Send test email to... (optional)"
-                  className="flex-1 border border-border bg-transparent p-2 text-sm focus:outline-none focus:border-foreground font-mono"
+                  className="flex-1 rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
                 />
                 <button
                   onClick={handleTest}
                   disabled={testState === 'testing' || !editing.host || !editing.user_name}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm border border-border bg-background hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   {testState === 'testing' ? <Loader className="w-4 h-4 animate-spin" /> : null}
                   {testState === 'testing' ? 'Testing...' : 'Test Connection'}
@@ -175,7 +175,7 @@ export default function Mailboxes() {
               <button
                 onClick={handleSave}
                 disabled={saving || !canSave}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50"
                 title={isNew && testState !== 'success' ? 'Test connection first' : ''}
               >
                 <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Mailbox'}
@@ -189,9 +189,9 @@ export default function Mailboxes() {
 
   return (
     <Page title="Mailboxes" requiredPermission="mail.manage">
-      <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-border pb-5">
         <p className="text-sm text-muted-foreground">Manage your inbound and outbound mailboxes for tickets and system emails.</p>
-        <button onClick={() => { setEditing({ port: 587, password: '' }); setTestState('idle'); setTestError(''); setTestEmail(''); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer">
+        <button onClick={() => { setEditing({ port: 587, password: '' }); setTestState('idle'); setTestError(''); setTestEmail(''); }} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0">
           <Plus className="w-4 h-4" /> Add Mailbox
         </button>
       </div>
@@ -200,22 +200,22 @@ export default function Mailboxes() {
       {error && <div className="text-sm text-red-500">Error: {error}</div>}
 
       {!loading && !error && mailboxes && (
-        <div className="border border-border bg-background divide-y divide-border">
+        <div className="rounded-2xl border border-border bg-card shadow-xs divide-y divide-border overflow-hidden">
           {mailboxes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No mailboxes configured.</div>
           ) : (
             mailboxes.map(mb => (
-              <div key={mb.id} className="flex items-center justify-between p-4 hover:bg-foreground/[0.02] transition-colors">
-                <div>
-                  <div className="flex items-center gap-2">
+              <div key={mb.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-foreground/[0.025] transition-colors">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{mb.name}</span>
-                    {mb.is_default && <span className="text-[10px] px-1.5 py-0.5 border border-border text-muted-foreground uppercase">Default</span>}
+                    {mb.is_default && <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-foreground/5 text-muted-foreground uppercase">Default</span>}
                   </div>
-                  <div className="text-sm text-muted-foreground font-mono">{mb.host}:{mb.port} · {mb.user_name}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground font-mono truncate">{mb.host}:{mb.port} · {mb.user_name}</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {!mb.is_default && (
-                    <button onClick={() => handleSetDefault(mb.id)} className="p-2 text-muted-foreground hover:text-foreground cursor-pointer" title="Set as Default">
+                    <button onClick={() => handleSetDefault(mb.id)} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer transition-colors" title="Set as Default">
                       <Star className="w-4 h-4" />
                     </button>
                   )}
@@ -227,12 +227,12 @@ export default function Mailboxes() {
                       setTestError('');
                       setTestEmail('');
                     }}
-                    className="p-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer transition-colors"
                     title="Edit"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(mb.id)} className="p-2 text-muted-foreground hover:text-red-500 cursor-pointer" title="Delete">
+                  <button onClick={() => handleDelete(mb.id)} className="p-2 rounded-xl text-muted-foreground hover:text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors" title="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

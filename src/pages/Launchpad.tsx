@@ -25,33 +25,35 @@ export default function Launchpad() {
 
   return (
     <Page title="Internal Tools & Telemetry">
-      <div className="mb-6">
+      <div className="mb-6 space-y-2.5">
         <p className="text-sm text-muted-foreground">Quick access to the sovereign OSS stack that powers VaultScope.</p>
-        <div className="mt-2 text-xs border border-border bg-foreground/5 inline-block px-2 py-1">
+        <div className="text-xs rounded-xl border border-border bg-card inline-block px-3 py-1.5 max-w-full overflow-x-auto">
           <span className="text-muted-foreground">Active Tool Permissions: </span>
           <span className="font-mono text-foreground">{userPermissions.join(', ')}</span>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         {visibleTools.map(tool => (
           <a
             key={tool.id}
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="border border-border p-6 block group bg-background hover:bg-foreground/[0.02] transition-colors relative"
+            className="rounded-2xl border border-border p-5 sm:p-6 block group bg-card shadow-xs hover:bg-foreground/[0.03] hover:border-foreground/25 transition-colors duration-150 relative"
           >
-            <ExternalLink className="w-8 h-8 mb-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <h3 className="font-medium text-lg mb-1">{tool.name}</h3>
+            <div className="w-11 h-11 rounded-xl border border-border bg-foreground/5 flex items-center justify-center mb-4 group-hover:bg-foreground/10 transition-colors">
+              <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <h3 className="font-medium text-base sm:text-lg mb-1">{tool.name}</h3>
             <p className="text-sm text-muted-foreground mb-4">Internal Tool link to {tool.name}</p>
-            <div className="text-xs text-blue-400 font-mono flex items-center gap-2">
+            <div className="text-xs text-blue-500 font-mono truncate">
               {tool.url}
             </div>
           </a>
         ))}
         {visibleTools.length === 0 && (
-          <div className="col-span-full p-8 border border-border text-center text-sm text-muted-foreground">
+          <div className="col-span-full p-8 rounded-2xl border border-border bg-card text-center text-sm text-muted-foreground">
             You do not have permission to view any internal tools.
           </div>
         )}

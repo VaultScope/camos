@@ -49,11 +49,11 @@ export default function TaxRatesPage() {
 
   return (
     <Page title="Tax Rates" requiredPermission="tax.manage">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <p className="text-sm text-muted-foreground">Configure tax rates applied to invoices based on customer country.</p>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 border border-border bg-foreground text-background px-4 py-2 text-sm hover:bg-foreground/90 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" /> Add Tax Rate
         </button>
@@ -63,38 +63,42 @@ export default function TaxRatesPage() {
       {error && <div className="p-8 text-center text-red-500 text-sm">Failed to load tax rates: {error}</div>}
 
       {!loading && !error && (
-        <div className="border border-border divide-y divide-border bg-background">
-          <div className="p-4 bg-foreground/5 text-xs font-medium uppercase tracking-wider grid grid-cols-4 text-muted-foreground">
-            <div className="col-span-2">Tax Name</div>
-            <div>Country</div>
-            <div className="text-right">Rate / Actions</div>
-          </div>
-          {(taxRates || []).map(t => (
-            <div key={t.id} className="p-4 text-sm grid grid-cols-4 items-center hover:bg-foreground/[0.02]">
-              <div className="col-span-2 flex items-center gap-2 font-medium">
-                <Percent className="w-4 h-4 text-muted-foreground" /> {t.name}
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[540px] divide-y divide-border">
+              <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-4 text-muted-foreground">
+                <div className="col-span-2">Tax Name</div>
+                <div>Country</div>
+                <div className="text-right">Rate / Actions</div>
               </div>
-              <div className="text-muted-foreground">{t.country}</div>
-              <div className="text-right flex items-center justify-end gap-4">
-                <span className="font-mono">{parseFloat(t.rate).toFixed(2)}%</span>
-                <button
-                  onClick={() => handleDelete(t.id, t.name)}
-                  className="text-xs border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/10 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              {(taxRates || []).map(t => (
+                <div key={t.id} className="p-4 text-sm grid grid-cols-4 items-center hover:bg-foreground/[0.025] transition-colors">
+                  <div className="col-span-2 flex items-center gap-2.5 font-medium">
+                    <Percent className="w-4 h-4 text-muted-foreground shrink-0" /> {t.name}
+                  </div>
+                  <div className="text-muted-foreground">{t.country}</div>
+                  <div className="text-right flex items-center justify-end gap-3">
+                    <span className="font-mono tabular-nums">{parseFloat(t.rate).toFixed(2)}%</span>
+                    <button
+                      onClick={() => handleDelete(t.id, t.name)}
+                      className="text-xs rounded-xl border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(taxRates || []).length === 0 && (
+                <div className="p-8 text-center text-muted-foreground text-sm">No tax rates configured.</div>
+              )}
             </div>
-          ))}
-          {(taxRates || []).length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-sm">No tax rates configured.</div>
-          )}
+          </div>
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border border-border p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-6 max-w-md w-full max-h-[90dvh] overflow-y-auto animate-ui-scale">
             <h3 className="text-lg font-medium mb-4">Add Tax Rate</h3>
             <div className="space-y-4">
               <div>
@@ -103,7 +107,7 @@ export default function TaxRatesPage() {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   placeholder="e.g. VAT (Germany)"
                 />
               </div>
@@ -112,7 +116,7 @@ export default function TaxRatesPage() {
                 <select
                   value={form.country}
                   onChange={e => setForm({ ...form, country: e.target.value })}
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 >
                   <option value="">Select country...</option>
                   <option value="ALL">ALL (Global)</option>
@@ -131,20 +135,20 @@ export default function TaxRatesPage() {
                   value={form.rate}
                   onChange={e => setForm({ ...form, rate: parseFloat(e.target.value) || 0 })}
                   step="0.01"
-                  className="w-full bg-background border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground"
+                  className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                 />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-xl border border-border text-sm hover:bg-foreground/5 cursor-pointer">
+                Cancel
+              </button>
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || !form.country.trim() || saving}
-                className="px-4 py-2 bg-foreground text-background text-sm hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
               >
                 {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-border text-sm hover:bg-foreground/5">
-                Cancel
               </button>
             </div>
           </div>

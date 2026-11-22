@@ -11,7 +11,7 @@ export default function InternalTools() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [newTool, setNewTool] = useState({
     name: '', url: '', required_permission: ''
   });
@@ -76,92 +76,103 @@ export default function InternalTools() {
 
   return (
     <Page title="Internal Tools" requiredPermission="internal_tools.manage">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-100">Internal Tools</h1>
-        <button onClick={openCreateModal} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-xl font-semibold text-foreground">Internal Tools</h1>
+        <button
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center gap-2 bg-foreground hover:bg-foreground/90 text-background px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer shrink-0"
+        >
           <Plus className="w-4 h-4" />
           Add Tool
         </button>
       </div>
 
-      {error && <div className="bg-red-500/10 text-red-500 p-4 rounded-lg mb-6">{error}</div>}
+      {error && <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded-2xl mb-6 text-sm">{error}</div>}
 
-      <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-400">Loading tools...</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">Loading tools...</div>
         ) : tools?.length === 0 ? (
-          <div className="p-8 text-center text-slate-400">No internal tools configured yet.</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">No internal tools configured yet.</div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-slate-900 border-b border-slate-700">
-              <tr>
-                <th className="p-4 font-medium text-slate-300">Name</th>
-                <th className="p-4 font-medium text-slate-300">URL</th>
-                <th className="p-4 font-medium text-slate-300">Required Permission</th>
-                <th className="p-4 font-medium text-slate-300 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tools?.map(tool => (
-                <tr key={tool.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
-                  <td className="p-4 text-slate-200">{tool.name}</td>
-                  <td className="p-4 text-slate-400 font-mono text-sm">{tool.url}</td>
-                  <td className="p-4">
-                    <span className="bg-slate-700 text-slate-300 px-2 py-1 rounded text-xs font-medium">
-                      {tool.required_permission}
-                    </span>
-                  </td>
-                  <td className="p-4 flex justify-end gap-2">
-                    <button onClick={() => openEditModal(tool)} className="p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(tool.id)} className="p-1 text-red-400 hover:text-red-300 bg-slate-800 hover:bg-slate-700 rounded">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[640px]">
+              <thead className="bg-foreground/[0.03] border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="p-4 font-medium">Name</th>
+                  <th className="p-4 font-medium">URL</th>
+                  <th className="p-4 font-medium">Required Permission</th>
+                  <th className="p-4 font-medium text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border text-sm">
+                {tools?.map(tool => (
+                  <tr key={tool.id} className="hover:bg-foreground/[0.025] transition-colors">
+                    <td className="p-4 font-medium text-foreground">{tool.name}</td>
+                    <td className="p-4 text-muted-foreground font-mono text-xs">{tool.url}</td>
+                    <td className="p-4">
+                      <span className="bg-foreground/5 border border-border text-muted-foreground px-2.5 py-0.5 rounded-full text-xs font-mono">
+                        {tool.required_permission}
+                      </span>
+                    </td>
+                    <td className="p-4 flex justify-end gap-2">
+                      <button
+                        onClick={() => openEditModal(tool)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground border border-border hover:bg-foreground/5 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tool.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-500/10 border border-red-500/30 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto animate-ui-scale">
+            <h2 className="text-lg font-semibold text-foreground mb-5">
               {modalMode === 'create' ? 'Add Internal Tool' : 'Edit Internal Tool'}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Name</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Name</label>
                 <input
                   required
                   type="text"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white"
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   value={newTool.name}
                   onChange={(e) => setNewTool({...newTool, name: e.target.value})}
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">URL</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">URL</label>
                 <input
                   required
                   type="url"
                   placeholder="https://grafana.vaultscope.de"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white font-mono text-sm"
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   value={newTool.url}
                   onChange={(e) => setNewTool({...newTool, url: e.target.value})}
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Required Permission</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Required Permission</label>
                 <select
                   required
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white"
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                   value={newTool.required_permission}
                   onChange={(e) => setNewTool({...newTool, required_permission: e.target.value})}
                 >
@@ -175,17 +186,17 @@ export default function InternalTools() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-700 mt-6">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-300 hover:text-white"
+                  className="px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                  className="px-4 py-2 rounded-xl bg-foreground hover:bg-foreground/90 text-background text-sm font-medium cursor-pointer"
                 >
                   {modalMode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
@@ -197,4 +208,3 @@ export default function InternalTools() {
     </Page>
   );
 }
-

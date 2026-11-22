@@ -28,6 +28,11 @@ function isMaskedSecretPlaceholder(value: unknown): boolean {
   return false;
 }
 
+const inputCls =
+  'w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 transition-colors';
+const monoInputCls = `${inputCls} font-mono`;
+const sectionCls = 'rounded-2xl border border-border bg-card shadow-xs p-5 sm:p-6';
+
 export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -127,7 +132,6 @@ export default function Settings() {
           } else {
             configured[s.key] = false;
           }
-          // Never populate plaintext or masked secret placeholders into controlled input state
           mapped[s.key] = '';
           return;
         }
@@ -205,75 +209,75 @@ export default function Settings() {
 
   return (
     <Page title="Global Settings" requiredPermission="settings.manage">
-      <div className="max-w-3xl">
-        <div className="flex justify-between items-center mb-6 border-b border-border pb-6">
+      <div className="max-w-4xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-border pb-5">
           <p className="text-sm text-muted-foreground">System-wide configuration for CAMOS and VaultScope.</p>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
           >
             <Save className="w-4 h-4" /> {saved ? 'Saved' : 'Save Changes'}
           </button>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Company */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Company</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Company</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Display Name</label>
-                  <input type="text" value={settings.companyName} onChange={e => update('companyName', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Display Name</label>
+                  <input type="text" value={settings.companyName} onChange={e => update('companyName', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Legal Name</label>
-                  <input type="text" value={settings.legalName} onChange={e => update('legalName', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Legal Name</label>
+                  <input type="text" value={settings.legalName} onChange={e => update('legalName', e.target.value)} className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Storefront URL</label>
-                  <input type="url" value={settings.storefrontUrl} onChange={e => update('storefrontUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Storefront URL</label>
+                  <input type="url" value={settings.storefrontUrl} onChange={e => update('storefrontUrl', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Admin Panel URL</label>
-                  <input type="url" value={settings.adminUrl} onChange={e => update('adminUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Admin Panel URL</label>
+                  <input type="url" value={settings.adminUrl} onChange={e => update('adminUrl', e.target.value)} className={monoInputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Phone</label>
-                <input type="tel" value={settings.phone} onChange={e => update('phone', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Phone</label>
+                <input type="tel" value={settings.phone} onChange={e => update('phone', e.target.value)} className={inputCls} />
               </div>
             </div>
           </section>
 
           {/* Address */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Address</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-2">Address</h3>
             <p className="text-xs text-muted-foreground mb-4">Used on invoices, legal correspondence, and imprint.</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Street</label>
-                <input type="text" value={settings.addressStreet} onChange={e => update('addressStreet', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Street</label>
+                <input type="text" value={settings.addressStreet} onChange={e => update('addressStreet', e.target.value)} className={inputCls} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Postal Code</label>
-                  <input type="text" value={settings.addressPostal} onChange={e => update('addressPostal', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Postal Code</label>
+                  <input type="text" value={settings.addressPostal} onChange={e => update('addressPostal', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">City</label>
-                  <input type="text" value={settings.addressCity} onChange={e => update('addressCity', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">City</label>
+                  <input type="text" value={settings.addressCity} onChange={e => update('addressCity', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">State / Region</label>
-                  <input type="text" value={settings.addressState} onChange={e => update('addressState', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">State / Region</label>
+                  <input type="text" value={settings.addressState} onChange={e => update('addressState', e.target.value)} className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Country</label>
-                <select value={settings.addressCountry} onChange={e => update('addressCountry', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Country</label>
+                <select value={settings.addressCountry} onChange={e => update('addressCountry', e.target.value)} className={inputCls}>
                   <option value="DE">Germany</option>
                   <option value="AT">Austria</option>
                   <option value="CH">Switzerland</option>
@@ -287,47 +291,47 @@ export default function Settings() {
           </section>
 
           {/* Legal & Registration */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Legal & Registration</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Legal & Registration</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">VAT ID</label>
-                  <input type="text" value={settings.vatId} onChange={e => update('vatId', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">VAT ID</label>
+                  <input type="text" value={settings.vatId} onChange={e => update('vatId', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Tax Number</label>
-                  <input type="text" value={settings.taxNumber} onChange={e => update('taxNumber', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Tax Number</label>
+                  <input type="text" value={settings.taxNumber} onChange={e => update('taxNumber', e.target.value)} className={monoInputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Registration Number</label>
-                  <input type="text" value={settings.registrationNumber} onChange={e => update('registrationNumber', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Registration Number</label>
+                  <input type="text" value={settings.registrationNumber} onChange={e => update('registrationNumber', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Court of Registration</label>
-                  <input type="text" value={settings.registrationCourt} onChange={e => update('registrationCourt', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Court of Registration</label>
+                  <input type="text" value={settings.registrationCourt} onChange={e => update('registrationCourt', e.target.value)} className={inputCls} />
                 </div>
               </div>
             </div>
           </section>
 
           {/* Localization */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Localization</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Localization</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Currency</label>
-                <select value={settings.currency} onChange={e => update('currency', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Currency</label>
+                <select value={settings.currency} onChange={e => update('currency', e.target.value)} className={inputCls}>
                   <option value="EUR">EUR (€)</option>
                   <option value="USD">USD ($)</option>
                   <option value="GBP">GBP (£)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Timezone</label>
-                <select value={settings.timezone} onChange={e => update('timezone', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Timezone</label>
+                <select value={settings.timezone} onChange={e => update('timezone', e.target.value)} className={inputCls}>
                   <option value="Europe/Berlin">Europe/Berlin (CET)</option>
                   <option value="Europe/London">Europe/London (GMT)</option>
                   <option value="America/New_York">America/New_York (EST)</option>
@@ -336,8 +340,8 @@ export default function Settings() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Locale</label>
-                <select value={settings.locale} onChange={e => update('locale', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Locale</label>
+                <select value={settings.locale} onChange={e => update('locale', e.target.value)} className={inputCls}>
                   <option value="de-DE">German (de-DE)</option>
                   <option value="en-US">English (en-US)</option>
                   <option value="en-GB">English (en-GB)</option>
@@ -346,8 +350,8 @@ export default function Settings() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Date Format</label>
-                <select value={settings.dateFormat} onChange={e => update('dateFormat', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Date Format</label>
+                <select value={settings.dateFormat} onChange={e => update('dateFormat', e.target.value)} className={inputCls}>
                   <option value="DD.MM.YYYY">DD.MM.YYYY</option>
                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                   <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -358,123 +362,121 @@ export default function Settings() {
           </section>
 
           {/* Authentication */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Authentication (OIDC)</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Issuer URL</label>
-                  <input type="text" value={settings.oidcIssuerUrl} onChange={e => update('oidcIssuerUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://auth.vaultscope.de" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Client ID</label>
-                  <input type="text" value={settings.oidcClientId} onChange={e => update('oidcClientId', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">OIDC Client Secret</label>
-                  <input
-                    type="password"
-                    value={settings.oidcClientSecret}
-                    onChange={e => update('oidcClientSecret', e.target.value)}
-                    placeholder={configuredSecrets.oidcClientSecret ? 'Configured — enter new secret to replace' : 'Enter OIDC client secret'}
-                    autoComplete="new-password"
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
-                  />
-                </div>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Authentication (OIDC)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Issuer URL</label>
+                <input type="text" value={settings.oidcIssuerUrl} onChange={e => update('oidcIssuerUrl', e.target.value)} className={monoInputCls} placeholder="https://auth.vaultscope.de" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Client ID</label>
+                <input type="text" value={settings.oidcClientId} onChange={e => update('oidcClientId', e.target.value)} className={monoInputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Client Secret</label>
+                <input
+                  type="password"
+                  value={settings.oidcClientSecret}
+                  onChange={e => update('oidcClientSecret', e.target.value)}
+                  placeholder={configuredSecrets.oidcClientSecret ? 'Configured — enter new secret to replace' : 'Enter OIDC client secret'}
+                  autoComplete="new-password"
+                  className={monoInputCls}
+                />
               </div>
             </div>
           </section>
 
           {/* Email */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Email & Transactional</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Email & Transactional</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Host</label>
-                  <input type="text" value={settings.smtpHost} onChange={e => update('smtpHost', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="smtp.example.com" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Host</label>
+                  <input type="text" value={settings.smtpHost} onChange={e => update('smtpHost', e.target.value)} className={monoInputCls} placeholder="smtp.example.com" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Port</label>
-                  <input type="number" value={settings.smtpPort} onChange={e => update('smtpPort', Number(e.target.value))} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="587" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Port</label>
+                  <input type="number" value={settings.smtpPort} onChange={e => update('smtpPort', Number(e.target.value))} className={monoInputCls} placeholder="587" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP User</label>
-                  <input type="text" value={settings.smtpUser} onChange={e => update('smtpUser', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP User</label>
+                  <input type="text" value={settings.smtpUser} onChange={e => update('smtpUser', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">SMTP Password</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">SMTP Password</label>
                   <input
                     type="password"
                     value={settings.smtpPass}
                     onChange={e => update('smtpPass', e.target.value)}
                     placeholder={configuredSecrets.smtpPass ? 'Configured — enter new password to replace' : 'Enter SMTP password'}
                     autoComplete="new-password"
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                    className={monoInputCls}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">From Name</label>
-                  <input type="text" value={settings.smtpFromName} onChange={e => update('smtpFromName', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">From Name</label>
+                  <input type="text" value={settings.smtpFromName} onChange={e => update('smtpFromName', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Sender Address</label>
-                  <input type="email" value={settings.smtpSender} onChange={e => update('smtpSender', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Sender Address</label>
+                  <input type="email" value={settings.smtpSender} onChange={e => update('smtpSender', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Reply-To</label>
-                  <input type="email" value={settings.smtpReplyTo} onChange={e => update('smtpReplyTo', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Reply-To</label>
+                  <input type="email" value={settings.smtpReplyTo} onChange={e => update('smtpReplyTo', e.target.value)} className={monoInputCls} />
                 </div>
               </div>
-              <button className="flex items-center gap-2 text-xs border border-border px-3 py-1.5 hover:bg-foreground/5 transition-colors cursor-pointer">
+              <button className="inline-flex items-center gap-2 text-xs rounded-xl border border-border px-3.5 py-2 hover:bg-foreground/5 transition-colors cursor-pointer">
                 <Send className="w-3 h-3" /> Send Test Email
               </button>
             </div>
           </section>
 
           {/* Billing */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Billing & Tax</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Billing & Tax</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Tax Mode</label>
-                  <select value={settings.taxMode} onChange={e => update('taxMode', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground">
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Tax Mode</label>
+                  <select value={settings.taxMode} onChange={e => update('taxMode', e.target.value)} className={inputCls}>
                     <option value="small_business">Kleinunternehmer (§ 19 UStG — 0% VAT)</option>
                     <option value="exclusive">Tax Exclusive (19% added on top)</option>
                     <option value="inclusive">Tax Inclusive (included in price)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Default Tax Rate</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Default Tax Rate</label>
                   <div className="relative">
-                    <input type="number" value={settings.defaultTaxRate} onChange={e => update('defaultTaxRate', parseFloat(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 pr-8 text-sm focus:outline-none focus:border-foreground" />
+                    <input type="number" value={settings.defaultTaxRate} onChange={e => update('defaultTaxRate', parseFloat(e.target.value) || 0)} className={`${inputCls} pr-8`} />
                     <span className="absolute right-3 top-2.5 text-muted-foreground text-sm">%</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 pt-5">
+                <div className="flex items-center gap-3 md:pt-5">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={settings.reverseChargeEnabled} onChange={e => update('reverseChargeEnabled', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer" />
+                    <input type="checkbox" checked={settings.reverseChargeEnabled} onChange={e => update('reverseChargeEnabled', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer rounded" />
                     Reverse Charge (B2B EU)
                   </label>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div className="pb-2">
                   <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={Boolean(settings.reliablesite_auto_fx_enabled)}
                       onChange={e => update('reliablesite_auto_fx_enabled', e.target.checked)}
-                      className="w-4 h-4 accent-foreground cursor-pointer"
+                      className="w-4 h-4 accent-foreground cursor-pointer rounded"
                     />
                     Live ECB USD → EUR Exchange Rate (auto-refresh)
                   </label>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">
                     {settings.reliablesite_auto_fx_enabled
                       ? 'Fallback USD → EUR Rate'
                       : 'Fixed USD → EUR Rate'}
@@ -484,199 +486,194 @@ export default function Settings() {
                     step="0.0001"
                     value={settings.reliablesite_usd_to_eur_rate}
                     onChange={e => update('reliablesite_usd_to_eur_rate', parseFloat(e.target.value) || 0)}
-                    className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono"
+                    className={monoInputCls}
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">Used when live ECB FX feed is disabled or unreachable.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">ReliableSite Retail Markup (%)</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">ReliableSite Retail Markup (%)</label>
                   <div className="relative">
                     <input
                       type="number"
                       step="0.1"
                       value={settings.reliablesite_markup_percent}
                       onChange={e => update('reliablesite_markup_percent', parseFloat(e.target.value) || 0)}
-                      className="w-full border border-border bg-transparent p-2.5 pr-8 text-sm focus:outline-none focus:border-foreground font-mono"
+                      className={`${monoInputCls} pr-8`}
                     />
                     <span className="absolute right-3 top-2.5 text-muted-foreground text-sm">%</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">Applied on top of the current USD → EUR rate.</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Invoice Prefix</label>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Invoice Prefix</label>
                   <div className="flex gap-2">
-                    <input type="text" value={settings.invoicePrefix} onChange={e => update('invoicePrefix', e.target.value)} className="w-20 border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
-                    <input type="number" value={settings.invoiceNextNumber} onChange={e => update('invoiceNextNumber', parseInt(e.target.value) || 0)} className="flex-1 border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                    <input type="text" value={settings.invoicePrefix} onChange={e => update('invoicePrefix', e.target.value)} className="w-20 rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono" />
+                    <input type="number" value={settings.invoiceNextNumber} onChange={e => update('invoiceNextNumber', parseInt(e.target.value) || 0)} className="flex-1 rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono" />
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">Next: {settings.invoicePrefix}-2026-0{settings.invoiceNextNumber}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Payment Due (Days)</label>
-                  <input type="number" value={settings.invoiceDueDays} onChange={e => update('invoiceDueDays', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Payment Due (Days)</label>
+                  <input type="number" value={settings.invoiceDueDays} onChange={e => update('invoiceDueDays', parseInt(e.target.value) || 0)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Payment Methods</label>
-                  <input type="text" value={settings.paymentMethods} onChange={e => update('paymentMethods', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Payment Methods</label>
+                  <input type="text" value={settings.paymentMethods} onChange={e => update('paymentMethods', e.target.value)} className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Invoice Footer Text</label>
-                <textarea value={settings.invoiceFooter} onChange={e => update('invoiceFooter', e.target.value)} rows={2} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground resize-none" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Invoice Footer Text</label>
+                <textarea value={settings.invoiceFooter} onChange={e => update('invoiceFooter', e.target.value)} rows={2} className={`${inputCls} resize-none`} />
               </div>
             </div>
           </section>
 
           {/* Bank Details */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Bank Details</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-2">Bank Details</h3>
             <p className="text-xs text-muted-foreground mb-4">Displayed on invoices for wire transfer payments.</p>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Account Holder</label>
-                  <input type="text" value={settings.bankAccountHolder} onChange={e => update('bankAccountHolder', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Account Holder</label>
+                  <input type="text" value={settings.bankAccountHolder} onChange={e => update('bankAccountHolder', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Bank Name</label>
-                  <input type="text" value={settings.bankName} onChange={e => update('bankName', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Bank Name</label>
+                  <input type="text" value={settings.bankName} onChange={e => update('bankName', e.target.value)} className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">IBAN</label>
-                  <input type="text" value={settings.bankIban} onChange={e => update('bankIban', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">IBAN</label>
+                  <input type="text" value={settings.bankIban} onChange={e => update('bankIban', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">BIC / SWIFT</label>
-                  <input type="text" value={settings.bankBic} onChange={e => update('bankBic', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">BIC / SWIFT</label>
+                  <input type="text" value={settings.bankBic} onChange={e => update('bankBic', e.target.value)} className={monoInputCls} />
                 </div>
               </div>
             </div>
           </section>
 
           {/* Branding */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Branding</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Logo URL</label>
-                  <input type="text" value={settings.logoUrl} onChange={e => update('logoUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Favicon URL</label>
-                  <input type="text" value={settings.faviconUrl} onChange={e => update('faviconUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Brand Color</label>
-                  <div className="flex gap-2">
-                    <input type="color" value={settings.brandColor} onChange={e => update('brandColor', e.target.value)} className="w-10 h-10 border border-border bg-transparent cursor-pointer p-0.5" />
-                    <input type="text" value={settings.brandColor} onChange={e => update('brandColor', e.target.value)} className="flex-1 border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
-                  </div>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Branding</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Logo URL</label>
+                <input type="text" value={settings.logoUrl} onChange={e => update('logoUrl', e.target.value)} className={monoInputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Favicon URL</label>
+                <input type="text" value={settings.faviconUrl} onChange={e => update('faviconUrl', e.target.value)} className={monoInputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Brand Color</label>
+                <div className="flex gap-2">
+                  <input type="color" value={settings.brandColor} onChange={e => update('brandColor', e.target.value)} className="w-10 h-10 rounded-xl border border-border bg-transparent cursor-pointer p-0.5 shrink-0" />
+                  <input type="text" value={settings.brandColor} onChange={e => update('brandColor', e.target.value)} className={monoInputCls} />
                 </div>
               </div>
             </div>
           </section>
 
           {/* Support & Legal */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Support & Legal</h3>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Support & Legal</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Support Email</label>
-                  <input type="email" value={settings.supportEmail} onChange={e => update('supportEmail', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Support Email</label>
+                  <input type="email" value={settings.supportEmail} onChange={e => update('supportEmail', e.target.value)} className={monoInputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Support Phone</label>
-                  <input type="tel" value={settings.supportPhone} onChange={e => update('supportPhone', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Support Phone</label>
+                  <input type="tel" value={settings.supportPhone} onChange={e => update('supportPhone', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Support Hours</label>
-                  <input type="text" value={settings.supportHours} onChange={e => update('supportHours', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Terms of Service URL</label>
-                  <input type="url" value={settings.tosUrl} onChange={e => update('tosUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/tos" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Privacy Policy URL</label>
-                  <input type="url" value={settings.privacyUrl} onChange={e => update('privacyUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/privacy" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Support Hours</label>
+                  <input type="text" value={settings.supportHours} onChange={e => update('supportHours', e.target.value)} className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Refund Policy URL</label>
-                  <input type="url" value={settings.refundUrl} onChange={e => update('refundUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/refund" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Terms of Service URL</label>
+                  <input type="url" value={settings.tosUrl} onChange={e => update('tosUrl', e.target.value)} className={monoInputCls} placeholder="https://example.com/tos" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Imprint URL</label>
-                  <input type="url" value={settings.imprintUrl} onChange={e => update('imprintUrl', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="https://example.com/imprint" />
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Privacy Policy URL</label>
+                  <input type="url" value={settings.privacyUrl} onChange={e => update('privacyUrl', e.target.value)} className={monoInputCls} placeholder="https://example.com/privacy" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Refund Policy URL</label>
+                  <input type="url" value={settings.refundUrl} onChange={e => update('refundUrl', e.target.value)} className={monoInputCls} placeholder="https://example.com/refund" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Imprint URL</label>
+                  <input type="url" value={settings.imprintUrl} onChange={e => update('imprintUrl', e.target.value)} className={monoInputCls} placeholder="https://example.com/imprint" />
                 </div>
               </div>
             </div>
           </section>
 
           {/* Automation */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Automation & Thresholds</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Automation & Thresholds</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Grace Period (Days)</label>
-                <input type="number" value={settings.gracePeriodDays} onChange={e => update('gracePeriodDays', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Grace Period (Days)</label>
+                <input type="number" value={settings.gracePeriodDays} onChange={e => update('gracePeriodDays', parseInt(e.target.value) || 0)} className={inputCls} />
                 <p className="text-[10px] text-muted-foreground mt-1">Days after due date before auto-suspend</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Auto-Terminate (Days)</label>
-                <input type="number" value={settings.autoTerminateDays} onChange={e => update('autoTerminateDays', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Auto-Terminate (Days)</label>
+                <input type="number" value={settings.autoTerminateDays} onChange={e => update('autoTerminateDays', parseInt(e.target.value) || 0)} className={inputCls} />
                 <p className="text-[10px] text-muted-foreground mt-1">Days after suspension before deletion</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Low Stock Alert Threshold</label>
-                <input type="number" value={settings.lowStockThreshold} onChange={e => update('lowStockThreshold', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Low Stock Alert Threshold</label>
+                <input type="number" value={settings.lowStockThreshold} onChange={e => update('lowStockThreshold', parseInt(e.target.value) || 0)} className={inputCls} />
                 <p className="text-[10px] text-muted-foreground mt-1">Notify when product stock falls below</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Session Timeout (min)</label>
-                <input type="number" value={settings.sessionTimeout} onChange={e => update('sessionTimeout', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Session Timeout (min)</label>
+                <input type="number" value={settings.sessionTimeout} onChange={e => update('sessionTimeout', parseInt(e.target.value) || 0)} className={inputCls} />
                 <p className="text-[10px] text-muted-foreground mt-1">Admin session inactivity timeout</p>
               </div>
             </div>
           </section>
 
           {/* Security */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Security</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Security</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Max Login Attempts</label>
-                <input type="number" value={settings.maxLoginAttempts} onChange={e => update('maxLoginAttempts', parseInt(e.target.value) || 0)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground" />
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Max Login Attempts</label>
+                <input type="number" value={settings.maxLoginAttempts} onChange={e => update('maxLoginAttempts', parseInt(e.target.value) || 0)} className={inputCls} />
                 <p className="text-[10px] text-muted-foreground mt-1">Before account lockout</p>
               </div>
-              <div className="flex items-center gap-3 pt-5">
+              <div className="flex items-center gap-3 sm:pt-5">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={settings.requireMfaStaff} onChange={e => update('requireMfaStaff', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer" />
+                  <input type="checkbox" checked={settings.requireMfaStaff} onChange={e => update('requireMfaStaff', e.target.checked)} className="w-4 h-4 accent-foreground cursor-pointer rounded" />
                   Require MFA for all staff accounts
                 </label>
               </div>
             </div>
           </section>
+
           {/* Domain Settings */}
-          <section>
-            <h3 className="text-sm font-medium border-b border-border pb-2 mb-4">Domain Settings</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Custom Storefront Domain</label>
-                <input type="text" value={settings.custom_domain} onChange={e => update('custom_domain', e.target.value)} className="w-full border border-border bg-transparent p-2.5 text-sm focus:outline-none focus:border-foreground font-mono" placeholder="vaultscope.de" />
-              </div>
+          <section className={sectionCls}>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Domain Settings</h3>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Custom Storefront Domain</label>
+              <input type="text" value={settings.custom_domain} onChange={e => update('custom_domain', e.target.value)} className={monoInputCls} placeholder="vaultscope.de" />
             </div>
           </section>
-
-          
         </div>
       </div>
     </Page>

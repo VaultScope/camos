@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { Sidebar, Page } from './Layout';
+import { Sidebar, Page, MobileNavProvider } from './Layout';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('Layout Components', () => {
@@ -73,6 +73,28 @@ describe('Layout Components', () => {
 
       expect(screen.getByText('Test Title')).toBeInTheDocument();
       expect(screen.getByTestId('page-content')).toBeInTheDocument();
+    });
+
+    it('opens and closes mobile navigation drawer via TopNav button', () => {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <MobileNavProvider>
+            <Sidebar />
+            <Page title="Responsive View">
+              <div>Body</div>
+            </Page>
+          </MobileNavProvider>
+        </MemoryRouter>
+      );
+
+      const nav = screen.getByLabelText('Primary navigation');
+      expect(nav.className).toContain('-translate-x-full');
+
+      fireEvent.click(screen.getByLabelText('Open navigation menu'));
+      expect(nav.className).toContain('translate-x-0');
+
+      fireEvent.click(screen.getByLabelText('Close navigation menu'));
+      expect(nav.className).toContain('-translate-x-full');
     });
   });
 });
