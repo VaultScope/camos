@@ -1,7 +1,21 @@
-import { Users, ShieldCheck } from 'lucide-react';
+import { Users, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated, loginWithCredentials } from '../lib/auth';
+
+const DEFAULT_MFA_ENROLLMENT_URL = 'https://vaultscope.de/dashboard/profile/mfa';
+
+function resolveSafeMfaRedirectUrl(rawUrl?: string): string {
+  if (!rawUrl || typeof rawUrl !== 'string') return DEFAULT_MFA_ENROLLMENT_URL;
+  const trimmed = rawUrl.trim();
+  if (
+    trimmed.startsWith('https://vaultscope.de/') ||
+    trimmed.startsWith('https://www.vaultscope.de/')
+  ) {
+    return trimmed;
+  }
+  return DEFAULT_MFA_ENROLLMENT_URL;
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -9,6 +23,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaEnrollmentRedirectUrl, setMfaEnrollmentRedirectUrl] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState('');
 
   useEffect(() => {
@@ -34,6 +49,12 @@ export default function Login() {
       }
       navigate('/', { replace: true });
     } catch (err: any) {
+      if (err?.mfaEnrollmentRequired) {
+        const targetUrl = resolveSafeMfaRedirectUrl(err?.redirectUrl);
+        setMfaEnrollmentRedirectUrl(targetUrl);
+        window.location.assign(targetUrl);
+        return;
+      }
       if (err?.mfaRequired || err?.message === 'MFA_REQUIRED') {
         setMfaRequired(true);
         return;
@@ -52,12 +73,18 @@ export default function Login() {
           decoding="async"
         />
         <h1 className="text-xl font-semibold tracking-tight mb-2 text-foreground">
-          {mfaRequired ? 'Two-Factor Verification' : 'Admin Login'}
+          {mfaEnrollmentRedirectUrl
+            ? '2FA Setup Required'
+            : mfaRequired
+              ? 'Two-Factor Verification'
+              : 'Admin Login'}
         </h1>
         <p className="text-sm text-muted-foreground mb-7">
-          {mfaRequired
-            ? 'Enter the 6-digit code from your authenticator app.'
-            : 'Enter your credentials to access the admin portal.'}
+          {mfaEnrollmentRedirectUrl
+            ? 'Two-factor authentication is mandatory for all CAMOS staff accounts. Redirecting you to the VaultScope MFA dashboard...'
+            : mfaRequired
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : 'Enter your credentials to access the admin portal.'}
         </p>
 
         {error && (
@@ -66,6 +93,24 @@ export default function Login() {
           </div>
         )}
 
+        {mfaEnrollmentRedirectUrl ? (
+          <div className="w-full flex flex-col gap-3">
+            <a
+              href={mfaEnrollmentRedirectUrl}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background font-medium py-3 px-6 hover:bg-foreground/90 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open VaultScope MFA Dashboard
+            </a>
+            <button
+              type="button"
+              onClick={() => setMfaEnrollmentRedirectUrl(null)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1 cursor-pointer"
+            >
+              Back to Sign in
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleLogin} className="w-full flex flex-col gap-3.5">
           {!mfaRequired ? (
             <>
@@ -130,6 +175,7 @@ export default function Login() {
             </>
           )}
         </form>
+        )}
       </div>
     </div>
   );

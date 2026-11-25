@@ -63,6 +63,15 @@ export async function loginWithCredentials(
   }
 
   const data = await res.json();
+  if (data.mfa_enrollment_required) {
+    const enrollErr: any = new Error(
+      data.message ||
+        'Two-factor authentication (2FA) is mandatory for CAMOS staff accounts. Redirecting to VaultScope MFA setup...'
+    );
+    enrollErr.mfaEnrollmentRequired = true;
+    enrollErr.redirectUrl = data.redirect_url || 'https://vaultscope.de/dashboard/profile/mfa';
+    throw enrollErr;
+  }
   if (data.mfa_required) {
     const mfaErr: any = new Error('MFA_REQUIRED');
     mfaErr.mfaRequired = true;

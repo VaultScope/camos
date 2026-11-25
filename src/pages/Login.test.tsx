@@ -79,4 +79,29 @@ describe('Login', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     });
   });
+
+  it('redirects staff members without 2FA to the VaultScope MFA dashboard', async () => {
+    const enrollErr: any = new Error('2FA required');
+    enrollErr.mfaEnrollmentRequired = true;
+    enrollErr.redirectUrl = 'https://vaultscope.de/dashboard/profile/mfa';
+    mockLogin.mockRejectedValueOnce(enrollErr);
+
+    const assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, assign: assignMock },
+      writable: true,
+    });
+
+    render(<MemoryRouter><Login /></MemoryRouter>);
+    fireEvent.change(screen.getByPlaceholderText('Email address'), { target: { value: 'no2fa@vaultscope.de' } });
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith('https://vaultscope.de/dashboard/profile/mfa');
+      expect(screen.getByText('2FA Setup Required')).toBeDefined();
+      const link = screen.getByRole('link', { name: /Open VaultScope MFA Dashboard/i });
+      expect(link.getAttribute('href')).toBe('https://vaultscope.de/dashboard/profile/mfa');
+    });
+  });
 });

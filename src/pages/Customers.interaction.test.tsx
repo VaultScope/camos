@@ -227,7 +227,7 @@ describe('Customers interaction tests', () => {
       expect(mockApi.put).not.toHaveBeenCalled();
     });
 
-    it('renders without verification_token and requires >= 8 char password when promoting customer to staff', async () => {
+    it('renders without verification_token and promotes customer to staff using shared account credentials without asking for a password', async () => {
       const user = userEvent.setup();
       mockUseApi.mockImplementation((url: string) => {
         if (url === '/admin/customers/c1')
@@ -236,6 +236,7 @@ describe('Customers interaction tests', () => {
           return { data: [{ id: 'role-support', name: 'Support', permissions: ['tickets.view'], mapped_group: 'support' }], loading: false, error: null, refetch: vi.fn() };
         return { data: [], loading: false, error: null, refetch: vi.fn() };
       });
+      mockApi.post.mockResolvedValueOnce({ id: 'staff-1' });
 
       const Customers = (await import('./Customers')).default;
       render(<MemoryRouter initialEntries={['/c1']}><Customers /></MemoryRouter>);
@@ -243,17 +244,18 @@ describe('Customers interaction tests', () => {
       expect(screen.queryByText(/Verification Link/i)).toBeNull();
       await user.click(screen.getByRole('button', { name: /Make Staff Member/i }));
 
+      expect(screen.queryByPlaceholderText('Minimum 8 characters')).toBeNull();
+      expect(screen.getByText(/automatically use their existing VaultScope account credentials/i)).toBeDefined();
+
       const submitButtons = screen.getAllByRole('button', { name: /Make Staff Member/i });
       const modalSubmit = submitButtons[submitButtons.length - 1] as HTMLButtonElement;
-      expect(modalSubmit.disabled).toBe(true);
-
-      const pwInput = screen.getByPlaceholderText('Minimum 8 characters');
-      await user.type(pwInput, 'short');
-      expect(modalSubmit.disabled).toBe(true);
-
-      await user.clear(pwInput);
-      await user.type(pwInput, 'ValidStaffPass123!');
       expect(modalSubmit.disabled).toBe(false);
+
+      await user.click(modalSubmit);
+      expect(mockApi.post).toHaveBeenCalledWith('/admin/customers/c1/promote', {
+        role_id: 'role-support',
+        username: 'test',
+      });
     });
   });
 });

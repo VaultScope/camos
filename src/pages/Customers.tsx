@@ -145,7 +145,6 @@ function CustomerDetail() {
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [promoteRoleId, setPromoteRoleId] = useState('');
   const [promoteUsername, setPromoteUsername] = useState('');
-  const [promotePassword, setPromotePassword] = useState('');
   const [promoting, setPromoting] = useState(false);
 
   const [resendingVerification, setResendingVerification] = useState(false);
@@ -195,22 +194,16 @@ function CustomerDetail() {
     const initialUsername = customer.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '');
     setPromoteUsername(initialUsername);
     setPromoteRoleId(roles?.[0]?.id || '');
-    setPromotePassword('');
     setIsPromoteModalOpen(true);
   };
 
   const handlePromote = async () => {
     if (!customer || !promoteRoleId || promoting) return;
-    if (promotePassword.trim().length < 8) {
-      toast.error('Please set a dedicated staff password of at least 8 characters.');
-      return;
-    }
     setPromoting(true);
     try {
       await api.post(`/admin/customers/${customer.id}/promote`, {
         role_id: promoteRoleId,
         username: promoteUsername.trim() || undefined,
-        password: promotePassword,
       });
       toast.success(`${customer.name} promoted to staff member successfully!`);
       setIsPromoteModalOpen(false);
@@ -686,21 +679,8 @@ function CustomerDetail() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Dedicated Staff Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  value={promotePassword}
-                  onChange={e => setPromotePassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
-                  autoComplete="new-password"
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
-                />
-                <span className="text-[11px] text-muted-foreground mt-1 block">
-                  A dedicated staff password (at least 8 characters) is required for admin promotion.
-                </span>
+              <div className="rounded-xl border border-border bg-foreground/[0.03] p-3 text-xs text-muted-foreground">
+                This staff member will automatically use their existing VaultScope account credentials and 2FA settings.
               </div>
             </div>
 
@@ -715,7 +695,7 @@ function CustomerDetail() {
               <button
                 type="button"
                 onClick={handlePromote}
-                disabled={!promoteRoleId || promotePassword.trim().length < 8 || promoting}
+                disabled={!promoteRoleId || promoting}
                 className="px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-2"
               >
                 {promoting ? 'Promoting...' : 'Make Staff Member'}
