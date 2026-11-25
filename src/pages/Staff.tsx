@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { Page } from '../components/Layout';
+import { HelpTooltip } from '../components/HelpTooltip';
 import { Shield, Users, Plus, Edit2, Camera, Key, Mail, CheckCircle2, Trash2 } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
-import { getStoredClaims } from '../lib/auth';
+import { getStoredClaims, hasPermission, syncStoredPermissions } from '../lib/auth';
 import { isSafeContentUrl } from '../lib/url';
 import { useToast } from '../components/Toast';
 import type { Staff, Role, Customer } from '../lib/types';
 
 interface StaffWithRole extends Staff {
   role_name: string;
+  permissions?: string[];
 }
 
 function StaffTabs() {
@@ -44,6 +46,7 @@ function StaffTabs() {
 function StaffAccount() {
   const { data: profile, loading, error, refetch } = useApi<StaffWithRole>('/admin/staff/me');
   const toast = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ first_name: '', last_name: '', username: '', email: '' });
   const [saving, setSaving] = useState(false);
@@ -57,6 +60,24 @@ function StaffAccount() {
       email: profile.email
     });
   }
+
+  if (profile && Array.isArray(profile.permissions)) {
+    syncStoredPermissions(profile.role_name, profile.permissions);
+  }
+
+  const handleMyAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+    const fd = new FormData();
+    fd.append('avatar', file);
+    try {
+      await api.post(`/admin/staff/${profile.id}/avatar`, fd);
+      toast.success('Avatar updated successfully');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Avatar upload failed');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -92,7 +113,19 @@ function StaffAccount() {
                   </span>
                 )}
               </div>
-              <button className="absolute -bottom-1 -right-1 p-1.5 rounded-full border border-border bg-background hover:bg-foreground/5 transition-colors cursor-pointer">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept=".png,.webp,.jpg,.jpeg"
+                onChange={handleMyAvatarUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Change Avatar"
+                className="absolute -bottom-1 -right-1 p-1.5 rounded-full border border-border bg-background hover:bg-foreground/5 transition-colors cursor-pointer"
+              >
                 <Camera className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </div>
@@ -281,7 +314,8 @@ function StaffMembers() {
   const handleSave = async () => {
     if (!editStaff.username.trim() || !editStaff.email.trim() || !editStaff.role_id || saving) return;
     const trimmedPassword = editStaff.password.trim();
-    if (modalMode === 'create' && trimmedPassword.length < 8) {
+    const isPromotingCustomer = modalMode === 'create' && Boolean(selectedCustomerId);
+    if (modalMode === 'create' && !isPromotingCustomer && trimmedPassword.length < 8) {
       toast.error('Please enter a dedicated staff password of at least 8 characters.');
       return;
     }
@@ -291,13 +325,12 @@ function StaffMembers() {
     }
     setSaving(true);
     try {
-      if (modalMode === 'create' && selectedCustomerId) {
+      if (isPromotingCustomer) {
         await api.post(`/admin/customers/${selectedCustomerId}/promote`, {
           role_id: editStaff.role_id,
           username: editStaff.username.trim() || undefined,
-          password: editStaff.password,
         });
-        toast.success('Customer promoted to staff successfully');
+        toast.success('Customer promoted to staff successfully using shared VaultScope credentials');
       } else if (modalMode === 'create') {
         await api.post('/admin/staff', {
           first_name: editStaff.first_name,
@@ -374,9 +407,11 @@ function StaffMembers() {
             className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
           />
         </div>
-        <button onClick={openCreateModal} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer whitespace-nowrap shrink-0">
-          <Plus className="w-4 h-4" /> Add User
-        </button>
+        {hasPermission('staff.manage') && (
+          <button onClick={openCreateModal} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer whitespace-nowrap shrink-0">
+            <Plus className="w-4 h-4" /> Add User
+          </button>
+        )}
       </div>
 
       {loading && <div className="p-8 text-center text-muted-foreground text-sm">Loading staff...</div>}
@@ -387,7 +422,7 @@ function StaffMembers() {
           <div className="overflow-x-auto">
             <div className="min-w-[660px] divide-y divide-border">
               <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
-                <div className="col-span-2">Staff Member (OIDC)</div>
+                <div className="col-span-2">Staff Member</div>
                 <div>Assigned Role</div>
                 <div className="text-right">Last Login</div>
                 <div className="text-right">Actions</div>
@@ -501,21 +536,27 @@ function StaffMembers() {
                   <p className="text-[11px] text-muted-foreground mt-1">Root user email cannot be changed here.</p>
                 )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
-                  {modalMode === 'edit' ? 'Password (Leave empty to keep unchanged)' : 'Staff Password * (min 8 chars)'}
-                </label>
-                <input
-                  type="password"
-                  required={modalMode === 'create'}
-                  minLength={8}
-                  autoComplete="new-password"
-                  value={editStaff.password}
-                  onChange={e => setEditStaff({...editStaff, password: e.target.value})}
-                  placeholder={modalMode === 'edit' ? '••••••••' : 'Minimum 8 characters'}
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
-                />
-              </div>
+              {!(modalMode === 'create' && selectedCustomerId) ? (
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">
+                    {modalMode === 'edit' ? 'Password (Leave empty to keep unchanged)' : 'Staff Password * (min 8 chars)'}
+                  </label>
+                  <input
+                    type="password"
+                    required={modalMode === 'create' && !selectedCustomerId}
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={editStaff.password}
+                    onChange={e => setEditStaff({...editStaff, password: e.target.value})}
+                    placeholder={modalMode === 'edit' ? '••••••••' : 'Minimum 8 characters'}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-foreground/[0.03] p-3 text-xs text-muted-foreground">
+                  This user will authenticate using their existing VaultScope account password and 2FA settings.
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Role</label>
                 <select
@@ -545,7 +586,7 @@ function StaffMembers() {
                   !editStaff.username.trim() ||
                   !editStaff.email.trim() ||
                   !editStaff.role_id ||
-                  (modalMode === 'create' && editStaff.password.trim().length < 8) ||
+                  (modalMode === 'create' && !selectedCustomerId && editStaff.password.trim().length < 8) ||
                   (modalMode === 'edit' && editStaff.password.length > 0 && editStaff.password.trim().length < 8) ||
                   saving
                 }
@@ -584,16 +625,28 @@ function StaffRbac() {
   const [editRole, setEditRole] = useState({ id: '', name: '', mapped_group: '', permissions: [] as string[] });
   const [saving, setSaving] = useState(false);
 
-  const permissionGroups = {
+  const permissionGroups: Record<string, string[]> = {
     Root: ['*'],
-    Customers: ['customers.view', 'customers.manage', 'customers.create', 'customers.edit', 'customers.delete'],
+    Customers: ['customers.view', 'customers.manage', 'customers.create', 'customers.edit', 'customers.impersonate', 'customers.delete'],
     Billing: ['billing.view', 'billing.manage', 'invoices.view', 'invoices.manage', 'invoices.create', 'invoices.edit', 'invoices.delete', 'tax.manage', 'coupons.manage'],
     Services: ['services.view', 'services.manage', 'services.power', 'services.reinstall', 'services.suspend', 'services.terminate'],
     Jobs: ['jobs.view', 'jobs.manage'],
     Staff: ['staff.view', 'staff.manage', 'staff.delete', 'accounts.delete', 'rbac.manage'],
     Products: ['products.view', 'products.manage', 'products.create', 'products.edit', 'products.delete', 'forms.manage'],
-    Tickets: ['tickets.view', 'tickets.manage', 'tickets.reply', 'departments.manage'],
+    Tickets: ['tickets.view', 'tickets.manage', 'tickets.create', 'tickets.reply', 'departments.manage'],
+    Blog: ['blog.view', 'blog.manage', 'blog.create', 'blog.edit', 'blog.delete'],
     System: ['settings.manage', 'templates.manage', 'mail.manage', 'email_logs.view', 'email_logs.manage', 'activity.view', 'reports.view', 'notifications.view', 'notifications.manage', 'internal_tools.view', 'internal_tools.manage']
+  };
+
+  const ROLE_TEMPLATES: Record<string, string[]> = {
+    Support: ['tickets.view', 'tickets.manage', 'tickets.create', 'tickets.reply', 'customers.view', 'customers.impersonate', 'services.view', 'invoices.view', 'notifications.view'],
+    Billing: ['billing.view', 'billing.manage', 'invoices.view', 'invoices.manage', 'invoices.create', 'invoices.edit', 'invoices.delete', 'tax.manage', 'coupons.manage', 'customers.view', 'customers.edit', 'reports.view', 'notifications.view'],
+    Technical: ['tickets.view', 'tickets.manage', 'tickets.reply', 'services.view', 'services.manage', 'services.power', 'services.reinstall', 'services.suspend', 'jobs.view', 'jobs.manage', 'customers.view', 'notifications.view'],
+    'Infrastructure Admin': ['services.view', 'services.manage', 'services.power', 'services.reinstall', 'services.suspend', 'services.terminate', 'jobs.view', 'jobs.manage', 'products.view', 'products.manage', 'products.create', 'products.edit', 'products.delete', 'forms.manage', 'internal_tools.view', 'notifications.view'],
+    'Account Manager': ['customers.view', 'customers.manage', 'customers.create', 'customers.edit', 'customers.impersonate', 'customers.delete', 'staff.view', 'staff.manage', 'staff.delete', 'accounts.delete', 'invoices.view', 'services.view', 'tickets.view', 'activity.view', 'notifications.view'],
+    'Content & Editorial': ['blog.view', 'blog.manage', 'blog.create', 'blog.edit', 'blog.delete', 'templates.manage', 'notifications.view'],
+    'Read-Only Auditor': ['customers.view', 'billing.view', 'invoices.view', 'services.view', 'products.view', 'tickets.view', 'jobs.view', 'staff.view', 'email_logs.view', 'activity.view', 'reports.view', 'notifications.view', 'blog.view'],
+    Root: ['*'],
   };
 
   const handleTogglePerm = (perm: string) => {
@@ -605,6 +658,20 @@ function StaffRbac() {
       setEditRole({ ...editRole, permissions: editRole.permissions.filter(p => p !== perm) });
     } else {
       setEditRole({ ...editRole, permissions: [...editRole.permissions, perm] });
+    }
+  };
+
+  const handleToggleGroup = (groupPerms: string[]) => {
+    const allowedPerms = groupPerms.filter(p => p !== '*' || canGrantWildcard);
+    const allSelected = allowedPerms.every(p => editRole.permissions.includes(p));
+    if (allSelected) {
+      setEditRole({
+        ...editRole,
+        permissions: editRole.permissions.filter(p => !allowedPerms.includes(p)),
+      });
+    } else {
+      const merged = Array.from(new Set([...editRole.permissions, ...allowedPerms]));
+      setEditRole({ ...editRole, permissions: merged });
     }
   };
 
@@ -622,12 +689,10 @@ function StaffRbac() {
 
   const handleSaveRole = async () => {
     const trimmedName = editRole.name.trim();
-    const trimmedGroup = editRole.mapped_group.trim();
-    if (!trimmedName || !trimmedGroup) return;
-    if (!/^[a-z0-9._-]+$/i.test(trimmedGroup) || trimmedGroup.includes('*')) {
-      toast.error('OIDC Mapped Group must contain only letters, numbers, dots, underscores, or hyphens.');
-      return;
-    }
+    if (!trimmedName) return;
+    const autoGroup =
+      editRole.mapped_group.trim() ||
+      `vs_${trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'role'}`;
     if (editRole.permissions.includes('*') && !canGrantWildcard) {
       toast.error('Only Owner / wildcard administrators can assign wildcard (*) permissions.');
       return;
@@ -636,7 +701,7 @@ function StaffRbac() {
     try {
       const payload = {
         name: trimmedName,
-        mapped_group: trimmedGroup,
+        mapped_group: autoGroup,
         permissions: editRole.permissions,
       };
 
@@ -648,7 +713,7 @@ function StaffRbac() {
       setIsRoleModalOpen(false);
       refetch();
     } catch (err) {
-      toast.error('Failed to save role');
+      toast.error(`Failed to save role: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -669,7 +734,7 @@ function StaffRbac() {
       <StaffTabs />
       <div className="flex flex-col sm:flex-row justify-between gap-3 mb-5 bg-card border border-border rounded-2xl p-3 shadow-xs">
         <div className="flex-1 max-w-lg">
-          <input type="text" placeholder="Search roles by Name, OIDC Group, or Permission..." value={searchRole} onChange={e => setSearchRole(e.target.value)} className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50" />
+          <input type="text" placeholder="Search roles by Name or Permission..." value={searchRole} onChange={e => setSearchRole(e.target.value)} className="w-full rounded-xl bg-background border border-border px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50" />
         </div>
         <button onClick={openCreateModal} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer whitespace-nowrap shrink-0">
           <Plus className="w-4 h-4" /> Create Role
@@ -684,8 +749,15 @@ function StaffRbac() {
           <div className="overflow-x-auto">
             <div className="min-w-[700px] divide-y divide-border">
               <div className="p-4 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
-                <div className="col-span-2">Role Name & OIDC Mapping</div>
-                <div className="col-span-2">Precise Permissions</div>
+                <div className="col-span-2 flex items-center gap-1.5">
+                  <span>Role Name</span>
+                  <HelpTooltip
+                    title="CAMOS RBAC Role"
+                    badge="RBAC"
+                    content="Defines the exact permissions granted to assigned staff members. Domain .manage permissions automatically inherit read/create/edit capabilities within that domain."
+                  />
+                </div>
+                <div className="col-span-2">Assigned Permissions</div>
                 <div className="text-right">Actions</div>
               </div>
               {filtered.map((r) => (
@@ -694,7 +766,9 @@ function StaffRbac() {
                     <Shield className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div className="flex flex-col min-w-0">
                       <span className="font-medium truncate">{r.name}</span>
-                      <span className="text-xs text-muted-foreground mt-1">OIDC Group: <code className="bg-foreground/5 px-1.5 py-0.5 rounded-md">{r.mapped_group}</code></span>
+                      <span className="text-xs text-muted-foreground mt-1">
+                        {r.permissions.includes('*') ? 'Full Super-Admin Access (*)' : `${r.permissions.length} permission${r.permissions.length === 1 ? '' : 's'}`}
+                      </span>
                     </div>
                   </div>
                   <div className="col-span-2 flex flex-wrap gap-1.5 pr-2">
@@ -739,21 +813,7 @@ function StaffRbac() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Role Name</label>
-                <input type="text" value={editRole.name} onChange={e => setEditRole({...editRole, name: e.target.value})} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50" placeholder="e.g. Legal Team" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Mapped Group</label>
-                <input
-                  type="text"
-                  value={editRole.mapped_group}
-                  onChange={e => setEditRole({...editRole, mapped_group: e.target.value.toLowerCase().replace(/\s+/g, '_')})}
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 font-mono"
-                  placeholder="e.g. legal_team"
-                />
-                <p className="text-[11px] text-amber-500 mt-1">
-                  Warning: Any user assigned this OIDC group in your identity provider automatically inherits every permission checked below. Restrict group membership tightly.
-                </p>
+                <input type="text" value={editRole.name} onChange={e => setEditRole({...editRole, name: e.target.value})} className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50" placeholder="e.g. Billing Operations" />
               </div>
 
               {editRole.permissions.includes('*') && (
@@ -764,21 +824,24 @@ function StaffRbac() {
 
               <div className="pt-4 border-t border-border">
                 <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
-                  <label className="block text-xs font-medium text-muted-foreground uppercase">Permissions</label>
+                  <div className="flex items-center gap-2">
+                    <label className="block text-xs font-medium text-muted-foreground uppercase">Permissions ({editRole.permissions.length} selected)</label>
+                    <HelpTooltip
+                      title="Permission Inheritance"
+                      content="Granting <domain>.manage automatically grants .view, .create, .edit, and operational sub-actions for that domain. Destructive actions like staff.delete, accounts.delete, and services.terminate must be explicitly checked."
+                    />
+                  </div>
                   <select
                     className="rounded-xl border border-border bg-background text-xs px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50"
                     onChange={(e) => {
                       const template = e.target.value;
-                      let perms: string[] = [];
-                      if (template === 'Support') perms = ['tickets.manage', 'customers.view', 'services.view'];
-                      else if (template === 'Billing') perms = ['billing.manage', 'invoices.manage', 'customers.view'];
-                      else if (template === 'Technical') perms = ['tickets.manage', 'services.manage', 'services.power'];
-                      else if (template === 'Infrastructure Admin') perms = ['services.manage', 'services.power', 'services.reinstall'];
-                      else if (template === 'Account Manager') perms = ['customers.manage', 'customers.delete', 'staff.manage', 'staff.delete', 'accounts.delete'];
-                      else if (template === 'Root') perms = ['*'];
-
-                      if (template) {
-                        setEditRole({ ...editRole, permissions: perms });
+                      const perms = ROLE_TEMPLATES[template];
+                      if (perms) {
+                        setEditRole({
+                          ...editRole,
+                          name: editRole.name.trim() ? editRole.name : template,
+                          permissions: [...perms],
+                        });
                       }
                     }}
                     defaultValue=""
@@ -789,13 +852,26 @@ function StaffRbac() {
                     <option value="Technical">Technical</option>
                     <option value="Infrastructure Admin">Infrastructure Admin</option>
                     <option value="Account Manager">Account Manager</option>
+                    <option value="Content & Editorial">Content &amp; Editorial</option>
+                    <option value="Read-Only Auditor">Read-Only Auditor</option>
                     {canGrantWildcard && <option value="Root">Root</option>}
                   </select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                   {Object.entries(permissionGroups).map(([group, perms]) => (
-                    <div key={group} className="space-y-2">
-                      <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2">{group}</h4>
+                    <div key={group} className="space-y-2 rounded-xl border border-border/60 p-3 bg-foreground/[0.015]">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">{group}</h4>
+                        {group !== 'Root' && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGroup(perms)}
+                            className="text-[10px] text-muted-foreground hover:text-foreground underline cursor-pointer"
+                          >
+                            {perms.every(p => editRole.permissions.includes(p)) ? 'Clear' : 'All'}
+                          </button>
+                        )}
+                      </div>
                       <div className="space-y-1">
                         {perms.map(perm => {
                           const isWildcardDisabled = perm === '*' && !canGrantWildcard && !editRole.permissions.includes('*');
@@ -823,7 +899,7 @@ function StaffRbac() {
               <button onClick={() => setIsRoleModalOpen(false)} className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">Cancel</button>
               <button
                 onClick={handleSaveRole}
-                disabled={!editRole.name || !editRole.mapped_group || saving}
+                disabled={!editRole.name.trim() || saving}
                 className="px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 {saving ? 'Saving...' : modalMode === 'create' ? 'Save Role' : 'Save Changes'}

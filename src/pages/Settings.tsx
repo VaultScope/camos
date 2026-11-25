@@ -3,11 +3,11 @@ import { Page } from '../components/Layout';
 import { Save, Send } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
+import { HelpTooltip } from '../components/HelpTooltip';
 import type { Setting } from '../lib/types';
 
 const SECRET_SETTING_KEYS = [
   'smtpPass',
-  'oidcClientSecret',
   'stripe_live_secret_key',
   'stripe_webhook_secret',
   'stripe_sandbox_secret_key',
@@ -66,9 +66,6 @@ export default function Settings() {
     smtpSender: '',
     smtpReplyTo: '',
     smtpFromName: '',
-    oidcClientId: '',
-    oidcClientSecret: '',
-    oidcIssuerUrl: '',
     taxMode: 'small_business',
     defaultTaxRate: 0,
     reverseChargeEnabled: true,
@@ -276,15 +273,35 @@ export default function Settings() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Country</label>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">Country (EU)</label>
                 <select value={settings.addressCountry} onChange={e => update('addressCountry', e.target.value)} className={inputCls}>
-                  <option value="DE">Germany</option>
                   <option value="AT">Austria</option>
-                  <option value="CH">Switzerland</option>
-                  <option value="NL">Netherlands</option>
+                  <option value="BE">Belgium</option>
+                  <option value="BG">Bulgaria</option>
+                  <option value="HR">Croatia</option>
+                  <option value="CY">Cyprus</option>
+                  <option value="CZ">Czechia</option>
+                  <option value="DK">Denmark</option>
+                  <option value="EE">Estonia</option>
+                  <option value="FI">Finland</option>
                   <option value="FR">France</option>
-                  <option value="GB">United Kingdom</option>
-                  <option value="US">United States</option>
+                  <option value="DE">Germany</option>
+                  <option value="GR">Greece</option>
+                  <option value="HU">Hungary</option>
+                  <option value="IE">Ireland</option>
+                  <option value="IT">Italy</option>
+                  <option value="LV">Latvia</option>
+                  <option value="LT">Lithuania</option>
+                  <option value="LU">Luxembourg</option>
+                  <option value="MT">Malta</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="PL">Poland</option>
+                  <option value="PT">Portugal</option>
+                  <option value="RO">Romania</option>
+                  <option value="SK">Slovakia</option>
+                  <option value="SI">Slovenia</option>
+                  <option value="ES">Spain</option>
+                  <option value="SE">Sweden</option>
                 </select>
               </div>
             </div>
@@ -361,35 +378,12 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* Authentication */}
-          <section className={sectionCls}>
-            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Authentication (OIDC)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Issuer URL</label>
-                <input type="text" value={settings.oidcIssuerUrl} onChange={e => update('oidcIssuerUrl', e.target.value)} className={monoInputCls} placeholder="https://auth.vaultscope.de" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Client ID</label>
-                <input type="text" value={settings.oidcClientId} onChange={e => update('oidcClientId', e.target.value)} className={monoInputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1.5">OIDC Client Secret</label>
-                <input
-                  type="password"
-                  value={settings.oidcClientSecret}
-                  onChange={e => update('oidcClientSecret', e.target.value)}
-                  placeholder={configuredSecrets.oidcClientSecret ? 'Configured — enter new secret to replace' : 'Enter OIDC client secret'}
-                  autoComplete="new-password"
-                  className={monoInputCls}
-                />
-              </div>
-            </div>
-          </section>
-
           {/* Email */}
           <section className={sectionCls}>
-            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4">Email & Transactional</h3>
+            <h3 className="text-sm font-semibold border-b border-border pb-2.5 mb-4 flex items-center gap-2">
+              Email & Transactional
+              <HelpTooltip content="SMTP settings used for verification emails, password resets, invoice notifications, and ticket updates." />
+            </h3>
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>

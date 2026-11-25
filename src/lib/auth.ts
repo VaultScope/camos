@@ -26,13 +26,96 @@ export function isAuthenticated(): boolean {
   return claims !== null && claims.audience === 'admin';
 }
 
+export function permissionSatisfies(heldPermissions: string[], requiredPerm: string): boolean {
+  if (!requiredPerm) return true;
+  if (heldPermissions.includes('*') || heldPermissions.includes(requiredPerm)) {
+    return true;
+  }
+
+  const has = (p: string) => heldPermissions.includes(p);
+  const dotIdx = requiredPerm.indexOf('.');
+  if (dotIdx > 0) {
+    const domain = requiredPerm.slice(0, dotIdx);
+    const action = requiredPerm.slice(dotIdx + 1);
+    if (has(`${domain}.manage`)) {
+      const restricted =
+        (domain === 'staff' && action === 'delete') ||
+        (domain === 'accounts' && action === 'delete') ||
+        (domain === 'services' && action === 'terminate') ||
+        (domain === 'rbac' && action === 'manage');
+      if (!restricted) {
+        return true;
+      }
+    }
+  }
+
+  switch (requiredPerm) {
+    case 'billing.view':
+      return has('billing.manage') || has('invoices.manage') || has('reports.view');
+    case 'invoices.view':
+      return has('billing.view') || has('billing.manage') || has('invoices.manage');
+    case 'invoices.create':
+    case 'invoices.edit':
+    case 'invoices.delete':
+    case 'invoices.manage':
+      return has('billing.manage') || has('invoices.manage');
+    case 'tax.manage':
+    case 'coupons.manage':
+      return has('billing.manage');
+    case 'departments.manage':
+    case 'tickets.create':
+    case 'tickets.reply':
+    case 'tickets.view':
+      return has('tickets.manage');
+    case 'forms.manage':
+      return has('products.manage');
+    case 'customers.impersonate':
+      return has('customers.manage') || has('customers.edit');
+    case 'customers.delete':
+    case 'staff.delete':
+      return has('accounts.delete');
+    case 'staff.view':
+      return has('staff.manage') || has('rbac.manage');
+    case 'email_logs.view':
+    case 'mail.view':
+      return has('email_logs.manage') || has('mail.manage') || has('email_logs.view') || has('mail.view');
+    case 'blog.view':
+    case 'blog.create':
+    case 'blog.edit':
+    case 'blog.delete':
+      return has('blog.manage') || has('templates.manage');
+    default:
+      return false;
+  }
+}
+
+export function syncStoredPermissions(roleName?: string, permissions?: string[]) {
+  const claims = getStoredClaims();
+  if (!claims || !Array.isArray(permissions)) return;
+  const nextRole = roleName || claims.role;
+  const prevPerms = Array.isArray(claims.permissions) ? claims.permissions : [];
+  if (
+    claims.role === nextRole &&
+    prevPerms.length === permissions.length &&
+    prevPerms.every((p, idx) => p === permissions[idx])
+  ) {
+    return;
+  }
+  const updated: AuthClaims = {
+    ...claims,
+    role: nextRole,
+    permissions,
+  };
+  localStorage.setItem('vs_admin_claims', JSON.stringify(updated));
+}
+
 export function hasPermission(permission: string): boolean {
   if (!isAuthenticated()) return false;
   const claims = getStoredClaims();
   if (!claims) return false;
+  if (claims.role === 'Owner' || claims.role === 'Super Admin') return true;
   const permissions: string[] = claims.permissions || [];
-  if (permissions.includes('*') || claims.role === 'Owner') return true;
-  return permissions.includes(permission);
+  return permissionSatisfies(permissions, permission);
 }
 
 export function getToken(): string | null {

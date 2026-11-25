@@ -4,7 +4,9 @@ import { Page } from '../components/Layout';
 import { Plus, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api, API_BASE } from '../lib/api';
+import { hasPermission } from '../lib/auth';
 import { useToast } from '../components/Toast';
+import { HelpTooltip } from '../components/HelpTooltip';
 import type { Invoice, Customer } from '../lib/types';
 
 interface LineItemForm {
@@ -23,6 +25,10 @@ export default function BillingInvoices() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [creating, setCreating] = useState(false);
+
+  const canCreate = hasPermission('invoices.create');
+  const canEdit = hasPermission('invoices.edit');
+  const canDelete = hasPermission('invoices.delete');
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -118,10 +124,22 @@ export default function BillingInvoices() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this draft invoice?')) return;
+  const handleVoid = async (inv: Invoice) => {
+    if (!confirm(`Mark invoice ${inv.invoice_number} as void?`)) return;
     try {
-      await api.delete(`/admin/invoices/${id}`);
+      await api.put(`/admin/invoices/${inv.id}`, { status: 'void' });
+      toast.success(`Invoice ${inv.invoice_number} voided`);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to void invoice: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDelete = async (inv: Invoice) => {
+    if (!confirm(`Delete invoice ${inv.invoice_number} (${inv.status})? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/invoices/${inv.id}`);
+      toast.success(`Invoice ${inv.invoice_number} deleted`);
       refetch();
     } catch (err) {
       toast.error(`Failed to delete invoice: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -175,13 +193,18 @@ export default function BillingInvoices() {
   return (
     <Page title="Invoices" requiredPermission="invoices.view">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-        <p className="text-sm text-muted-foreground">Manage and generate customer invoices.</p>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Create Invoice
-        </button>
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          Manage, send, void, or delete customer invoices.
+          <HelpTooltip content="Invoices can be downloaded as PDF, sent to the customer via email, marked paid manually, voided, or permanently deleted if you hold the invoices.delete permission." />
+        </p>
+        {canCreate && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Create Invoice
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5 bg-card border border-border rounded-2xl p-3 shadow-xs">
@@ -250,19 +273,24 @@ export default function BillingInvoices() {
                     >
                       PDF
                     </button>
-                    {inv.status === 'draft' && (
+                    {inv.status === 'draft' && canEdit && (
+                      <button onClick={() => handleSend(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
+                        Send
+                      </button>
+                    )}
+                    {(inv.status === 'pending' || inv.status === 'overdue') && canEdit && (
                       <>
-                        <button onClick={() => handleSend(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
-                          Send
+                        <button onClick={() => handleMarkPaid(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-green-500/30 text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer">
+                          Mark Paid
                         </button>
-                        <button onClick={() => handleDelete(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer">
-                          Delete
+                        <button onClick={() => handleVoid(inv)} className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
+                          Void
                         </button>
                       </>
                     )}
-                    {(inv.status === 'pending' || inv.status === 'overdue') && (
-                      <button onClick={() => handleMarkPaid(inv.id)} className="text-xs px-2.5 py-1 rounded-lg border border-green-500/30 text-green-500 hover:bg-green-500/10 transition-colors cursor-pointer">
-                        Mark Paid
+                    {canDelete && (
+                      <button onClick={() => handleDelete(inv)} className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer">
+                        Delete
                       </button>
                     )}
                   </div>

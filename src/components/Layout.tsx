@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, createContext, useContext, memo } from 'react';
-import { Link, useLocation, useInRouterContext } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, memo } from 'react';
+import { Link, useLocation, useNavigate, useInRouterContext } from 'react-router-dom';
 import {
   Users,
   Server,
@@ -29,12 +29,13 @@ import {
   X,
   Sun,
   Moon,
+  Keyboard,
 } from 'lucide-react';
-import { getStoredClaims, logout, hasPermission } from '../lib/auth';
+import { getStoredClaims, logout, hasPermission, permissionSatisfies, syncStoredPermissions } from '../lib/auth';
 import { useApi } from '../lib/hooks';
 import { isSafeHttpUrl } from '../lib/url';
 import { prefetchRoute } from '../lib/routePrefetch';
-import type { InternalTool, Role } from '../lib/types';
+import type { InternalTool, Role, Staff } from '../lib/types';
 import { CommandPalette } from './CommandPalette';
 import { useExplainMode } from './HelpTooltip';
 
@@ -194,6 +195,7 @@ export function Sidebar() {
 
   const { data: internalTools } = useApi<InternalTool[]>('/admin/internal-tools');
   const { data: roles } = useApi<Role[]>('/admin/staff/roles');
+  const { data: myProfile } = useApi<(Staff & { role_name?: string; permissions?: string[] })>('/admin/staff/me');
 
   // Auto-close mobile drawer whenever route changes
   useEffect(() => {
@@ -201,17 +203,30 @@ export function Sidebar() {
   }, [location.pathname, close]);
 
   const claims = getStoredClaims();
-  const currentRole = roles?.find((r) => r.name === claims?.role);
-  const hasResolvedPermissions = Boolean(currentRole || Array.isArray(claims?.permissions));
+  const currentRole = roles?.find((r) => r.name === (myProfile?.role_name || claims?.role));
+  const resolvedPerms = myProfile?.permissions || currentRole?.permissions || claims?.permissions;
+
+  useEffect(() => {
+    if (Array.isArray(resolvedPerms) && resolvedPerms.length > 0) {
+      syncStoredPermissions(myProfile?.role_name || currentRole?.name || claims?.role, resolvedPerms);
+    }
+  }, [resolvedPerms, myProfile?.role_name, currentRole?.name, claims?.role]);
+
+  const hasResolvedPermissions = Boolean(
+    Array.isArray(myProfile?.permissions) || currentRole || Array.isArray(claims?.permissions)
+  );
+  const effectiveRoleName = myProfile?.role_name || claims?.role || '';
   const userPermissions =
-    claims?.role === 'Owner' || claims?.permissions?.includes('*')
+    effectiveRoleName === 'Owner' ||
+    effectiveRoleName === 'Super Admin' ||
+    resolvedPerms?.includes('*')
       ? ['*']
-      : currentRole?.permissions || claims?.permissions || [];
+      : resolvedPerms || [];
 
   const visibleTools =
     internalTools?.filter(
       (t) =>
-        (userPermissions.includes('*') || userPermissions.includes(t.required_permission)) &&
+        permissionSatisfies(userPermissions, t.required_permission) &&
         isSafeHttpUrl(t.url)
     ) || [];
 
@@ -221,7 +236,7 @@ export function Sidebar() {
     if (!claims) return true;
     if (userPermissions.includes('*')) return true;
     if (!hasResolvedPermissions) return false;
-    return userPermissions.includes(permission);
+    return permissionSatisfies(userPermissions, permission);
   };
 
   const toggleItem = useCallback((name: string) => {
@@ -248,7 +263,7 @@ export function Sidebar() {
     },
     {
       label: 'Content',
-      items: [{ name: 'Blog', path: '/blog', icon: FileText }],
+      items: [{ name: 'Blog', path: '/blog', icon: FileText, permission: 'blog.view' }],
     },
     {
       label: 'Customers',
@@ -533,29 +548,109 @@ function useThemeMode() {
   return { isDark, toggleTheme };
 }
 
+const SHORTCUT_ITEMS = [
+  { keys: ['Ctrl', 'K'], label: 'Open Command Palette & Search' },
+  { keys: ['?'], label: 'Open Keyboard Shortcuts Guide' },
+  { keys: ['Alt', 'H'], label: 'Toggle Interactive UI Hints (Explain Mode)' },
+  { keys: ['Alt', 'D'], label: 'Toggle Dark / Light Theme' },
+  { keys: ['G', 'D'], label: 'Go to Dashboard' },
+  { keys: ['G', 'C'], label: 'Go to Customer Accounts' },
+  { keys: ['G', 'S'], label: 'Go to Active Services' },
+  { keys: ['G', 'T'], label: 'Go to Support Tickets' },
+  { keys: ['G', 'I'], label: 'Go to Billing & Invoices' },
+  { keys: ['G', 'P'], label: 'Go to Product Catalog' },
+  { keys: ['G', 'R'], label: 'Go to Staff & RBAC' },
+  { keys: ['G', 'A'], label: 'Go to Activity Log' },
+  { keys: ['G', 'X'], label: 'Go to Global Settings' },
+];
+
 function TopNavWithRouter({ title: _title }: { title: string }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const lastChordRef = useRef<{ key: string; time: number } | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { explainMode, toggleExplainMode } = useExplainMode();
   const { toggle: toggleMobileNav } = useMobileNav();
   const { isDark, toggleTheme } = useThemeMode();
 
-  // Global Cmd/Ctrl + K shortcut to open/close command palette
+  // Global keyboard shortcuts (Ctrl+K, Alt+H, Alt+D, ?, and G + <key> navigation chords)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        // Don't hijack Ctrl+K inside markdown/rich text editors
-        const target = e.target as HTMLElement | null;
         if (target && (target.tagName === 'TEXTAREA' || target.isContentEditable)) {
           return;
         }
         e.preventDefault();
         setIsCommandOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.altKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        toggleExplainMode();
+        return;
+      }
+
+      if (e.altKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        toggleTheme();
+        return;
+      }
+
+      if (isEditable || e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
+
+      if (e.key === '?') {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key === 'Escape' && isShortcutsOpen) {
+        setIsShortcutsOpen(false);
+        return;
+      }
+
+      const keyLower = e.key.toLowerCase();
+      const now = Date.now();
+      if (lastChordRef.current && lastChordRef.current.key === 'g' && now - lastChordRef.current.time < 900) {
+        lastChordRef.current = null;
+        const chordRoutes: Record<string, { path: string; perm?: string }> = {
+          d: { path: '/' },
+          c: { path: '/customers', perm: 'customers.view' },
+          s: { path: '/services', perm: 'services.view' },
+          t: { path: '/tickets', perm: 'tickets.view' },
+          i: { path: '/billing/invoices', perm: 'invoices.view' },
+          p: { path: '/products', perm: 'products.view' },
+          r: { path: '/staff/rbac', perm: 'staff.view' },
+          a: { path: '/activity', perm: 'activity.view' },
+          x: { path: '/settings', perm: 'settings.manage' },
+        };
+        const match = chordRoutes[keyLower];
+        if (match && (!match.perm || hasPermission(match.perm))) {
+          e.preventDefault();
+          navigate(match.path);
+        }
+        return;
+      }
+
+      if (keyLower === 'g') {
+        lastChordRef.current = { key: 'g', time: now };
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [navigate, toggleExplainMode, toggleTheme, isShortcutsOpen]);
 
   const pathSegments = location.pathname.split('/').filter(Boolean);
 
@@ -636,10 +731,21 @@ function TopNavWithRouter({ title: _title }: { title: string }) {
                 ? 'bg-amber-500/15 text-amber-500 border-amber-500/40 shadow-xs'
                 : 'text-muted-foreground border-border hover:text-foreground hover:bg-foreground/[0.04]'
             }`}
-            title="Toggle interactive help tooltips on all fields and metrics"
+            title="Toggle interactive help tooltips on all fields and metrics (Alt+H)"
           >
             <HelpCircle className={`w-3.5 h-3.5 shrink-0 ${explainMode ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">{explainMode ? 'Help Hints: ON' : 'Explain UI'}</span>
+          </button>
+
+          {/* Keyboard Shortcuts Guide */}
+          <button
+            type="button"
+            onClick={() => setIsShortcutsOpen(true)}
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+            className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-150 cursor-pointer"
+          >
+            <Keyboard className="w-3.5 h-3.5" />
           </button>
 
           {/* Theme Mode Toggle */}
@@ -662,6 +768,49 @@ function TopNavWithRouter({ title: _title }: { title: string }) {
       </header>
 
       <CommandPalette isOpen={isCommandOpen} onClose={() => setIsCommandOpen(false)} />
+
+      {isShortcutsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-ui-fade"
+          onClick={() => setIsShortcutsOpen(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-5 sm:p-6 animate-ui-scale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-4 h-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Keyboard Shortcuts</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShortcutsOpen(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="divide-y divide-border/60 max-h-[65dvh] overflow-y-auto">
+              {SHORTCUT_ITEMS.map((item) => (
+                <div key={item.label} className="py-2.5 flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {item.keys.map((k) => (
+                      <kbd
+                        key={k}
+                        className="px-2 py-0.5 font-mono text-[11px] rounded-md border border-border bg-foreground/5 text-foreground"
+                      >
+                        {k}
+                      </kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

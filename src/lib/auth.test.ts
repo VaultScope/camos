@@ -112,6 +112,22 @@ describe('hasPermission', () => {
     expect(hasPermission('products.edit')).toBe(false);
     expect(hasPermission('staff.manage')).toBe(false);
   });
+
+  it('supports hierarchical .manage inheritance and cross-domain RBAC aliases', () => {
+    const billingStaff: AuthClaims = {
+      ...validClaims,
+      role: 'Billing',
+      permissions: ['invoices.manage', 'customers.edit'],
+    };
+    localStorage.setItem('vs_admin_claims', JSON.stringify(billingStaff));
+    localStorage.setItem('vs_admin_token', 'admin-jwt');
+    expect(hasPermission('invoices.view')).toBe(true);
+    expect(hasPermission('invoices.create')).toBe(true);
+    expect(hasPermission('invoices.edit')).toBe(true);
+    expect(hasPermission('invoices.delete')).toBe(true);
+    expect(hasPermission('customers.impersonate')).toBe(true);
+    expect(hasPermission('customers.delete')).toBe(false);
+  });
 });
 
 describe('getToken', () => {

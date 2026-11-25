@@ -1,17 +1,118 @@
 import { useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import { Page } from '../components/Layout';
-import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play, Shield, Mail, CheckCircle2, Copy, Check, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, Server, LifeBuoy, ExternalLink, Ban, Play, Shield, Mail, CheckCircle2, Copy, Check, Trash2, Edit2, UserCheck, X } from 'lucide-react';
 import { useApi } from '../lib/hooks';
 import { api } from '../lib/api';
+import { hasPermission } from '../lib/auth';
 import { useToast } from '../components/Toast';
-import type { Customer, Service, Ticket, ActivityLog, Role } from '../lib/types';
+import { HelpTooltip } from '../components/HelpTooltip';
+import type { Customer, Service, Ticket, ActivityLog, Role, Invoice } from '../lib/types';
+
+const EU_COUNTRIES: Array<{ code: string; name: string }> = [
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czechia' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'MT', name: 'Malta' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'SE', name: 'Sweden' },
+];
 
 function CustomerList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const { data: customers, loading, error, refetch } = useApi<Customer[]>('/admin/customers');
   const toast = useToast();
+
+  const canCreate = hasPermission('customers.create');
+  const canDelete = hasPermission('customers.delete');
+  const canImpersonate = hasPermission('customers.impersonate');
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    email: '',
+    username: '',
+    company: '',
+    phone: '',
+    address: '',
+    postal_code: '',
+    city: '',
+    country: 'DE',
+    vat_id: '',
+  });
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomer.name.trim() || !newCustomer.email.trim() || creating) return;
+    setCreating(true);
+    try {
+      await api.post('/admin/customers', {
+        name: newCustomer.name.trim(),
+        email: newCustomer.email.trim(),
+        username: newCustomer.username.trim() || undefined,
+        company: newCustomer.company.trim() || undefined,
+        phone: newCustomer.phone.trim() || undefined,
+        address: newCustomer.address.trim() || undefined,
+        postal_code: newCustomer.postal_code.trim() || undefined,
+        city: newCustomer.city.trim() || undefined,
+        country: newCustomer.country || 'DE',
+        vat_id: newCustomer.vat_id.trim() || undefined,
+      });
+      toast.success('Customer account created');
+      setShowAddModal(false);
+      setNewCustomer({
+        name: '',
+        email: '',
+        username: '',
+        company: '',
+        phone: '',
+        address: '',
+        postal_code: '',
+        city: '',
+        country: 'DE',
+        vat_id: '',
+      });
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to create customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleImpersonateRow = async (c: Customer) => {
+    try {
+      const res = await api.post<{ impersonation_url: string }>(`/admin/customers/${c.id}/impersonate`);
+      if (res?.impersonation_url) {
+        window.open(res.impersonation_url, '_blank', 'noopener,noreferrer');
+        toast.success(`Impersonation session opened for ${c.name}`);
+      }
+    } catch (err) {
+      toast.error(`Failed to impersonate: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   const handleDeleteCustomer = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to permanently delete customer account "${name}"? This action cannot be undone.`)) return;
@@ -37,7 +138,7 @@ function CustomerList() {
   return (
     <Page title="Customer Management" requiredPermission="customers.view">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 bg-card border border-border rounded-2xl p-3 shadow-xs">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 items-center">
           <input
             type="text"
             placeholder="Search by name, email, ID, or VAT..."
@@ -55,10 +156,17 @@ function CustomerList() {
             <option value="suspended">Suspended</option>
             <option value="banned">Banned</option>
           </select>
+          <HelpTooltip content="Search and filter customer accounts across all EU member states. Click any customer row to manage services, invoices, tickets, or impersonate their dashboard." />
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0">
-          <Plus className="w-4 h-4" /> Add Customer
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground text-background px-4 py-2 text-sm font-medium hover:bg-foreground/90 transition-colors cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Add Customer
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -101,23 +209,183 @@ function CustomerList() {
                   <div className="text-center font-medium tabular-nums">{(c as any).active_services || 0}</div>
                   <div className="text-right text-xs font-mono text-muted-foreground">{c.created_at?.split('T')[0]}</div>
                   <div className="flex justify-end gap-1.5">
+                    {canImpersonate && (
+                      <button
+                        type="button"
+                        onClick={() => handleImpersonateRow(c)}
+                        className="text-xs rounded-xl border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer"
+                        title="Impersonate Customer"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                      </button>
+                    )}
                     <Link to={`/customers/${c.id}`} className="text-xs rounded-xl border border-border p-1.5 hover:bg-foreground/5 transition-colors cursor-pointer" title="Edit/View">
                       <ExternalLink className="w-4 h-4" />
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCustomer(c.id, c.name)}
-                      className="text-xs rounded-xl border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Delete Account"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomer(c.id, c.name)}
+                        className="text-xs rounded-xl border border-red-500/30 text-red-500 p-1.5 hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title="Delete Account"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
               {filtered.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground text-sm">No customers match your filters.</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90dvh] overflow-y-auto animate-ui-scale">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Add Customer</h2>
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    value={newCustomer.name}
+                    onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                    placeholder="Jane Doe"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={newCustomer.email}
+                    onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                    placeholder="jane@example.eu"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={newCustomer.username}
+                    onChange={e => setNewCustomer({ ...newCustomer, username: e.target.value })}
+                    placeholder="janedoe"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={newCustomer.phone}
+                    onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                    placeholder="+49 ..."
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Company</label>
+                  <input
+                    type="text"
+                    value={newCustomer.company}
+                    onChange={e => setNewCustomer({ ...newCustomer, company: e.target.value })}
+                    placeholder="Company GmbH"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">VAT ID</label>
+                  <input
+                    type="text"
+                    value={newCustomer.vat_id}
+                    onChange={e => setNewCustomer({ ...newCustomer, vat_id: e.target.value })}
+                    placeholder="DE123456789"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Street Address</label>
+                <input
+                  type="text"
+                  value={newCustomer.address}
+                  onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                  placeholder="Musterstraße 1"
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    value={newCustomer.postal_code}
+                    onChange={e => setNewCustomer({ ...newCustomer, postal_code: e.target.value })}
+                    placeholder="10115"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">City</label>
+                  <input
+                    type="text"
+                    value={newCustomer.city}
+                    onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })}
+                    placeholder="Berlin"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Country (EU)</label>
+                  <select
+                    value={newCustomer.country}
+                    onChange={e => setNewCustomer({ ...newCustomer, country: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  >
+                    {EU_COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCustomer}
+                disabled={!newCustomer.name.trim() || !newCustomer.email.trim() || creating}
+                className="px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+              >
+                {creating ? 'Creating...' : 'Create Customer'}
+              </button>
             </div>
           </div>
         </div>
@@ -132,6 +400,7 @@ function CustomerDetail() {
   const navigate = useNavigate();
   const { data: customer, loading, error, refetch } = useApi<Customer>(encodedId ? `/admin/customers/${encodedId}` : '');
   const { data: services } = useApi<Service[]>(encodedId ? `/admin/services?customer_id=${encodedId}` : '');
+  const { data: customerInvoices, refetch: refetchInvoices } = useApi<Invoice[]>(encodedId ? `/admin/invoices?customer_id=${encodedId}` : '');
   const { data: tickets } = useApi<Ticket[]>(encodedId ? `/admin/tickets?customer_id=${encodedId}` : '');
   const { data: activity } = useApi<ActivityLog[]>(encodedId ? `/admin/activity?customer_id=${encodedId}` : '');
   const { data: roles } = useApi<Role[]>('/admin/staff/roles');
@@ -142,14 +411,109 @@ function CustomerDetail() {
   const [notesInitialized, setNotesInitialized] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  const canEdit = hasPermission('customers.edit');
+  const canDelete = hasPermission('customers.delete');
+  const canImpersonate = hasPermission('customers.impersonate');
+  const canManageStaff = hasPermission('staff.manage') || hasPermission('customers.edit');
+  const canDeleteInvoices = hasPermission('invoices.delete');
+
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [promoteRoleId, setPromoteRoleId] = useState('');
   const [promoteUsername, setPromoteUsername] = useState('');
   const [promoting, setPromoting] = useState(false);
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    username: '',
+    company: '',
+    phone: '',
+    address: '',
+    postal_code: '',
+    city: '',
+    country: 'DE',
+    vat_id: '',
+    vat_verified: false,
+  });
+
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+
+  const openEditModal = () => {
+    if (!customer) return;
+    setEditForm({
+      name: customer.name || '',
+      email: customer.email || '',
+      username: (customer as any).username || '',
+      company: customer.company || '',
+      phone: customer.phone || '',
+      address: customer.address || '',
+      postal_code: customer.postal_code || '',
+      city: customer.city || '',
+      country: customer.country || 'DE',
+      vat_id: customer.vat_id || '',
+      vat_verified: Boolean(customer.vat_verified),
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!customer || savingEdit || !editForm.name.trim() || !editForm.email.trim()) return;
+    setSavingEdit(true);
+    try {
+      await api.put(`/admin/customers/${customer.id}`, {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        username: editForm.username.trim() || undefined,
+        company: editForm.company.trim(),
+        phone: editForm.phone.trim(),
+        address: editForm.address.trim(),
+        postal_code: editForm.postal_code.trim(),
+        city: editForm.city.trim(),
+        country: editForm.country || 'DE',
+        vat_id: editForm.vat_id.trim(),
+        vat_verified: editForm.vat_verified,
+      });
+      toast.success('Customer profile updated');
+      setIsEditModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(`Failed to update customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleImpersonate = async () => {
+    if (!customer || impersonating) return;
+    setImpersonating(true);
+    try {
+      const res = await api.post<{ impersonation_url: string }>(`/admin/customers/${customer.id}/impersonate`);
+      if (res?.impersonation_url) {
+        window.open(res.impersonation_url, '_blank', 'noopener,noreferrer');
+        toast.success(`Impersonation session opened for ${customer.name}`);
+      }
+    } catch (err) {
+      toast.error(`Failed to impersonate customer: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
+  const handleDeleteCustomerInvoice = async (inv: Invoice) => {
+    if (!confirm(`Delete invoice ${inv.invoice_number} (${inv.status})? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/invoices/${inv.id}`);
+      toast.success(`Invoice ${inv.invoice_number} deleted`);
+      refetchInvoices();
+    } catch (err) {
+      toast.error(`Failed to delete invoice: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   const handleResendVerification = async () => {
     if (!customer || resendingVerification) return;
@@ -251,6 +615,7 @@ function CustomerDetail() {
   }
 
   const customerServices = services || [];
+  const invoicesList = customerInvoices || [];
   const customerTickets = tickets || [];
   const customerActivity = activity || [];
 
@@ -287,16 +652,27 @@ function CustomerDetail() {
 
   const tabs = [
     { key: 'services', label: 'Services', count: customerServices.length },
-    { key: 'invoices', label: 'Invoices', count: 0 },
+    { key: 'invoices', label: 'Invoices', count: invoicesList.length },
     { key: 'tickets', label: 'Tickets', count: customerTickets.length },
     { key: 'activity', label: 'Activity', count: customerActivity.length },
   ] as const;
 
   return (
     <Page title="Customer Management" requiredPermission="customers.view">
-      <button onClick={() => navigate('/customers')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer">
-        <ArrowLeft className="w-4 h-4" /> All Customers
-      </button>
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={() => navigate('/customers')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+          <ArrowLeft className="w-4 h-4" /> All Customers
+        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={openEditModal}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
+          >
+            <Edit2 className="w-3.5 h-3.5" /> Edit Customer
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="rounded-2xl border border-border bg-card shadow-xs p-5 flex flex-col justify-between">
@@ -326,14 +702,16 @@ function CustomerDetail() {
                       <span className="text-[10px] px-2 py-0.5 border border-yellow-500/30 text-yellow-500 bg-yellow-500/5">
                         Unverified
                       </span>
-                      <button
-                        onClick={handleMarkVerified}
-                        disabled={verifyingEmail}
-                        className="text-[10px] px-1.5 py-0.5 border border-border hover:bg-foreground/5 cursor-pointer disabled:opacity-50"
-                        title="Manually verify email"
-                      >
-                        {verifyingEmail ? '...' : 'Verify Now'}
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={handleMarkVerified}
+                          disabled={verifyingEmail}
+                          className="text-[10px] px-1.5 py-0.5 border border-border hover:bg-foreground/5 cursor-pointer disabled:opacity-50"
+                          title="Manually verify email"
+                        >
+                          {verifyingEmail ? '...' : 'Verify Now'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -396,11 +774,6 @@ function CustomerDetail() {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground text-xs uppercase">External ID</span>
-                <span className="font-mono text-xs truncate max-w-[150px]" title={customer.external_id}>{customer.external_id || '—'}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground text-xs uppercase">Registered</span>
                 <span className="text-xs">{customer.created_at?.split('T')[0]}</span>
               </div>
@@ -441,17 +814,30 @@ function CustomerDetail() {
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-border bg-card shadow-xs p-5">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Actions</h4>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              Quick Actions
+              <HelpTooltip content="Perform administrative operations on this customer account. Impersonate opens a temporary 1-hour Storefront session in a new tab." />
+            </h4>
             <div className="space-y-2">
-              <button
-                onClick={handleResendVerification}
-                disabled={resendingVerification}
-                className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                {resendingVerification ? 'Sending Email...' : 'Resend Verification Email'}
-              </button>
-              {!customer.email_verified && (
+              {canEdit && (
+                <button
+                  onClick={openEditModal}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-muted-foreground" /> Edit Customer Details
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={handleResendVerification}
+                  disabled={resendingVerification}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                  {resendingVerification ? 'Sending Email...' : 'Resend Verification Email'}
+                </button>
+              )}
+              {!customer.email_verified && canEdit && (
                 <button
                   onClick={handleMarkVerified}
                   disabled={verifyingEmail}
@@ -461,35 +847,46 @@ function CustomerDetail() {
                   {verifyingEmail ? 'Verifying...' : 'Mark Email as Verified'}
                 </button>
               )}
-              <button onClick={openPromoteModal} className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
-                <Shield className="w-3.5 h-3.5 text-muted-foreground" /> Make Staff Member
-              </button>
-              <button className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
-                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" /> Impersonate
-              </button>
+              {canManageStaff && (
+                <button onClick={openPromoteModal} className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer">
+                  <Shield className="w-3.5 h-3.5 text-muted-foreground" /> Make Staff Member
+                </button>
+              )}
+              {canImpersonate && (
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                  {impersonating ? 'Opening Session...' : 'Impersonate'}
+                </button>
+              )}
               <Link to="/tickets/new" className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors">
                 <LifeBuoy className="w-3.5 h-3.5 text-muted-foreground" /> Create Ticket
               </Link>
               <Link to="/services/new" className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors">
                 <Server className="w-3.5 h-3.5 text-muted-foreground" /> Provision Service
               </Link>
-              {customer.status === 'active' && (
+              {canEdit && customer.status === 'active' && (
                 <button onClick={() => handleStatusChange('suspended')} disabled={updating} className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                   <Ban className="w-3.5 h-3.5 text-muted-foreground" /> {updating ? 'Processing...' : 'Suspend Account'}
                 </button>
               )}
-              {customer.status === 'suspended' && (
+              {canEdit && customer.status === 'suspended' && (
                 <button onClick={() => handleStatusChange('active')} disabled={updating} className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-border hover:bg-foreground/5 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                   <Play className="w-3.5 h-3.5 text-muted-foreground" /> {updating ? 'Processing...' : 'Reactivate'}
                 </button>
               )}
-              <button
-                onClick={handleDeleteCustomer}
-                disabled={deletingCustomer}
-                className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> {deletingCustomer ? 'Deleting...' : 'Delete Customer Account'}
-              </button>
+              {canDelete && (
+                <button
+                  onClick={handleDeleteCustomer}
+                  disabled={deletingCustomer}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> {deletingCustomer ? 'Deleting...' : 'Delete Customer Account'}
+                </button>
+              )}
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-card shadow-xs p-5">
@@ -498,12 +895,15 @@ function CustomerDetail() {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 resize-none mb-2.5"
+              disabled={!canEdit}
+              className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15 focus:border-foreground/50 resize-none mb-2.5 disabled:opacity-60"
               placeholder="Staff-only notes about this customer..."
             />
-            <button onClick={handleSaveNotes} disabled={updating} className="text-xs px-3.5 py-2 rounded-xl bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              {updating ? 'Saving...' : notesSaved ? 'Saved' : 'Save Notes'}
-            </button>
+            {canEdit && (
+              <button onClick={handleSaveNotes} disabled={updating} className="text-xs px-3.5 py-2 rounded-xl bg-foreground text-background font-medium hover:bg-foreground/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                {updating ? 'Saving...' : notesSaved ? 'Saved' : 'Save Notes'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -569,8 +969,48 @@ function CustomerDetail() {
       )}
 
       {activeTab === 'invoices' && (
-        <div className="rounded-2xl border border-border bg-card shadow-xs p-6 text-center text-sm text-muted-foreground">
-          No invoices.
+        <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+          {invoicesList.length > 0 ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px] divide-y divide-border">
+                <div className="p-3.5 bg-foreground/[0.03] text-xs font-medium uppercase tracking-wider grid grid-cols-5 text-muted-foreground">
+                  <div>Invoice #</div>
+                  <div>Amount</div>
+                  <div>Status</div>
+                  <div>Due Date</div>
+                  <div className="text-right">Actions</div>
+                </div>
+                {invoicesList.map(inv => (
+                  <div key={inv.id} className="p-3.5 text-sm grid grid-cols-5 items-center hover:bg-foreground/[0.025] transition-colors">
+                    <div className="font-mono text-xs">{inv.invoice_number}</div>
+                    <div className="font-medium tabular-nums">€{parseFloat(inv.total || '0').toFixed(2)}</div>
+                    <div>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full border uppercase ${inv.status === 'paid' ? 'border-green-500/30 bg-green-500/10 text-green-500' : inv.status === 'pending' ? 'border-blue-500/30 bg-blue-500/10 text-blue-500' : inv.status === 'overdue' ? 'border-red-500/30 bg-red-500/10 text-red-500' : 'border-muted-foreground/30 text-muted-foreground'}`}>
+                        {inv.status}
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground font-mono text-xs">{inv.due_date}</div>
+                    <div className="flex justify-end gap-1.5">
+                      <Link to="/billing/invoices" className="text-xs px-2.5 py-1 rounded-lg border border-border hover:bg-foreground/5">
+                        View
+                      </Link>
+                      {canDeleteInvoices && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomerInvoice(inv)}
+                          className="text-xs px-2.5 py-1 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-sm text-muted-foreground">No invoices.</div>
+          )}
         </div>
       )}
 
@@ -634,6 +1074,157 @@ function CustomerDetail() {
           ) : (
             <div className="p-6 text-center text-sm text-muted-foreground">No recorded activity.</div>
           )}
+        </div>
+      )}
+
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-ui-fade">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl p-5 sm:p-6 w-full max-w-lg max-h-[90dvh] overflow-y-auto animate-ui-scale">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-muted-foreground" /> Edit Customer
+              </h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={editForm.username}
+                    onChange={e => setEditForm({ ...editForm, username: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Company</label>
+                  <input
+                    type="text"
+                    value={editForm.company}
+                    onChange={e => setEditForm({ ...editForm, company: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">VAT ID</label>
+                  <input
+                    type="text"
+                    value={editForm.vat_id}
+                    onChange={e => setEditForm({ ...editForm, vat_id: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Street Address</label>
+                <input
+                  type="text"
+                  value={editForm.address}
+                  onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Postal Code</label>
+                  <input
+                    type="text"
+                    value={editForm.postal_code}
+                    onChange={e => setEditForm({ ...editForm, postal_code: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">City</label>
+                  <input
+                    type="text"
+                    value={editForm.city}
+                    onChange={e => setEditForm({ ...editForm, city: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground uppercase mb-1">Country (EU)</label>
+                  <select
+                    value={editForm.country}
+                    onChange={e => setEditForm({ ...editForm, country: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                  >
+                    {EU_COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={editForm.vat_verified}
+                  onChange={e => setEditForm({ ...editForm, vat_verified: e.target.checked })}
+                  className="w-4 h-4 accent-foreground rounded"
+                />
+                VAT ID Verified (EU VIES / Reverse Charge eligible)
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!editForm.name.trim() || !editForm.email.trim() || savingEdit}
+                className="px-4 py-2 rounded-xl text-sm bg-foreground text-background font-medium hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
+              >
+                {savingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

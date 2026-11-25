@@ -7,6 +7,8 @@ vi.mock('../lib/hooks', () => ({ useApi: vi.fn() }));
 vi.mock('../lib/auth', () => ({
   getStoredClaims: () => ({ sub: 's1', email: 'a@vs.de', role: 'admin' }),
   isAuthenticated: () => true, logout: vi.fn(), hasPermission: () => true,
+  syncStoredPermissions: vi.fn(),
+  permissionSatisfies: () => true,
 }));
 
 import { useApi } from '../lib/hooks';
@@ -84,7 +86,7 @@ describe('Staff', () => {
     expect(modalSubmit.disabled).toBe(true);
   });
 
-  it('includes mail.manage and internal_tools permissions and shows OIDC/wildcard warnings in RBAC modal', async () => {
+  it('includes mail.manage, customers.impersonate, blog permissions and shows wildcard warnings without OIDC fields in RBAC modal', async () => {
     mockUseApi.mockImplementation((url: string) => {
       if (url === '/admin/staff/roles') return { data: [mockRole], loading: false, error: null, refetch: vi.fn() };
       return { data: [], loading: false, error: null, refetch: vi.fn() };
@@ -95,9 +97,11 @@ describe('Staff', () => {
 
     fireEvent.click(screen.getByTitle('Edit'));
     expect(screen.getByText('mail.manage')).toBeDefined();
+    expect(screen.getByText('customers.impersonate')).toBeDefined();
+    expect(screen.getByText('blog.manage')).toBeDefined();
     expect(screen.getByText('internal_tools.view')).toBeDefined();
     expect(screen.getByText('internal_tools.manage')).toBeDefined();
     expect(screen.getByText(/High-Privilege Warning:/i)).toBeDefined();
-    expect(screen.getByText(/Warning: Any user assigned this OIDC group/i)).toBeDefined();
+    expect(screen.queryByText(/OIDC Mapped Group/i)).toBeNull();
   });
 });

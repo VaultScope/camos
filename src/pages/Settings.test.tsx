@@ -41,7 +41,6 @@ describe('Settings', () => {
     mockApi.get.mockResolvedValueOnce([
       { key: 'companyName', value: 'VaultScope GmbH', updated_at: '2026-01-01T00:00:00Z' },
       { key: 'smtpPass', value: '••••••••', updated_at: '2026-01-01T00:00:00Z' },
-      { key: 'oidcClientSecret_configured', value: true, updated_at: '2026-01-01T00:00:00Z' },
       { key: 'stripe_live_secret_key', value: { configured: true }, updated_at: '2026-01-01T00:00:00Z' },
       { key: 'stripe_webhook_secret', value: '', updated_at: '2026-01-01T00:00:00Z' },
       { key: 'stripe_sandbox_secret_key', value: '***', updated_at: '2026-01-01T00:00:00Z' },
@@ -55,9 +54,7 @@ describe('Settings', () => {
     });
 
     const smtpInput = screen.getByPlaceholderText('Configured — enter new password to replace') as HTMLInputElement;
-    const oidcInput = screen.getByPlaceholderText('Configured — enter new secret to replace') as HTMLInputElement;
     expect(smtpInput.value).toBe('');
-    expect(oidcInput.value).toBe('');
 
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
     await waitFor(() => {
@@ -67,11 +64,9 @@ describe('Settings', () => {
     const firstEntries = mockApi.put.mock.calls[0][1] as Array<{ key: string; value: unknown }>;
     const firstKeys = firstEntries.map(e => e.key);
     expect(firstKeys).not.toContain('smtpPass');
-    expect(firstKeys).not.toContain('oidcClientSecret');
     expect(firstKeys).not.toContain('stripe_live_secret_key');
     expect(firstKeys).not.toContain('stripe_webhook_secret');
     expect(firstKeys).not.toContain('stripe_sandbox_secret_key');
-    expect(firstKeys).not.toContain('oidcClientSecret_configured');
 
     // Entering a new SMTP password explicitly should send only that newly entered secret
     fireEvent.change(smtpInput, { target: { value: 'new-smtp-secret-2026' } });
@@ -81,7 +76,6 @@ describe('Settings', () => {
     });
     const secondEntries = mockApi.put.mock.calls[1][1] as Array<{ key: string; value: unknown }>;
     expect(secondEntries).toContainEqual({ key: 'smtpPass', value: 'new-smtp-secret-2026' });
-    expect(secondEntries.map(e => e.key)).not.toContain('oidcClientSecret');
     expect(secondEntries).toContainEqual({ key: 'taxMode', value: 'small_business' });
     expect(secondEntries).toContainEqual({ key: 'reliablesite_auto_fx_enabled', value: true });
     expect(secondEntries).toContainEqual({ key: 'reliablesite_usd_to_eur_rate', value: 0.91 });

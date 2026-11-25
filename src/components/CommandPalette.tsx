@@ -36,6 +36,7 @@ interface CommandItem {
   action?: () => void;
   keywords?: string[];
   permission?: string;
+  shortcut?: string;
 }
 
 interface CommandPaletteProps {
@@ -53,29 +54,32 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const commands = useMemo<CommandItem[]>(() => {
     const allItems: CommandItem[] = [
       // Pages
-      { id: 'dash', name: 'Dashboard', description: 'Real-time telemetry, MRR & node health', category: 'Pages', path: '/', icon: Activity, keywords: ['overview', 'mrr', 'stats'] },
-      { id: 'notif', name: 'Notifications', description: 'System alerts and events', category: 'Pages', path: '/notifications', icon: Bell },
+      { id: 'dash', name: 'Dashboard', description: 'Real-time telemetry, MRR & node health', category: 'Pages', path: '/', icon: Activity, keywords: ['overview', 'mrr', 'stats'], shortcut: 'G D' },
+      { id: 'notif', name: 'Notifications', description: 'System alerts and events', category: 'Pages', path: '/notifications', icon: Bell, permission: 'notifications.view' },
       { id: 'reports', name: 'Reports & Revenue', description: 'Financial metrics & growth analysis', category: 'Pages', path: '/reports', icon: BarChart3, keywords: ['finance', 'revenue', 'analytics'], permission: 'reports.view' },
-      { id: 'customers', name: 'Customer Accounts', description: 'Client profiles, emails & services', category: 'Pages', path: '/customers', icon: Users, keywords: ['users', 'clients'], permission: 'customers.view' },
-      { id: 'tickets', name: 'Support Tickets', description: 'Customer tickets & helpdesk', category: 'Pages', path: '/tickets', icon: LifeBuoy, keywords: ['support', 'messages', 'help'], permission: 'tickets.view' },
-      { id: 'billing', name: 'Billing & Invoices', description: 'Manage invoices, automations & tax rates', category: 'Pages', path: '/billing', icon: DollarSign, keywords: ['invoices', 'stripe', 'payments'], permission: 'invoices.view' },
-      { id: 'products', name: 'Product Catalog', description: 'Configure compute, storage & retail plans', category: 'Pages', path: '/products', icon: HardDrive, keywords: ['plans', 'pricing', 'hardware'], permission: 'products.view' },
+      { id: 'customers', name: 'Customer Accounts', description: 'Client profiles, emails, impersonation & services', category: 'Pages', path: '/customers', icon: Users, keywords: ['users', 'clients', 'impersonate'], permission: 'customers.view', shortcut: 'G C' },
+      { id: 'tickets', name: 'Support Tickets', description: 'Customer tickets & helpdesk', category: 'Pages', path: '/tickets', icon: LifeBuoy, keywords: ['support', 'messages', 'help'], permission: 'tickets.view', shortcut: 'G T' },
+      { id: 'billing', name: 'Billing & Invoices', description: 'Manage invoices, automations & tax rates', category: 'Pages', path: '/billing/invoices', icon: DollarSign, keywords: ['invoices', 'stripe', 'payments'], permission: 'invoices.view', shortcut: 'G I' },
+      { id: 'billing-insights', name: 'Billing Insights', description: 'Revenue, Stripe balance, and profit analytics', category: 'Pages', path: '/billing/insights', icon: BarChart3, keywords: ['stripe', 'profit', 'analytics'], permission: 'billing.view' },
+      { id: 'tax-rates', name: 'Tax Rates', description: 'Configure EU VAT and regional tax rules', category: 'Pages', path: '/billing/tax-rates', icon: DollarSign, keywords: ['vat', 'tax'], permission: 'tax.manage' },
+      { id: 'products', name: 'Product Catalog', description: 'Configure compute, storage & retail plans', category: 'Pages', path: '/products', icon: HardDrive, keywords: ['plans', 'pricing', 'hardware'], permission: 'products.view', shortcut: 'G P' },
       { id: 'coupons', name: 'Coupons & Promos', description: 'Discount codes and incentives', category: 'Pages', path: '/coupons', icon: Tag, keywords: ['discounts', 'promotions'], permission: 'coupons.manage' },
-      { id: 'services', name: 'Active Services', description: 'Provisioned cloud & dedicated servers', category: 'Pages', path: '/services', icon: Server, keywords: ['instances', 'vps', 'dedicated', 'sftp'], permission: 'services.view' },
+      { id: 'services', name: 'Active Services', description: 'Provisioned cloud & dedicated servers', category: 'Pages', path: '/services', icon: Server, keywords: ['instances', 'vps', 'dedicated', 'sftp'], permission: 'services.view', shortcut: 'G S' },
       { id: 'jobs', name: 'Provisioning Queue', description: 'Background job worker execution status', category: 'Pages', path: '/jobs', icon: ListTree, keywords: ['queue', 'tasks', 'workers'], permission: 'jobs.view' },
       { id: 'forms', name: 'Service Forms', description: 'Dynamic order form builders', category: 'Pages', path: '/forms', icon: FileText, permission: 'forms.manage' },
-      { id: 'staff', name: 'Staff & RBAC', description: 'Team members, roles and permissions', category: 'Pages', path: '/staff', icon: Shield, keywords: ['roles', 'permissions', 'admin'], permission: 'staff.view' },
+      { id: 'staff', name: 'Staff & RBAC', description: 'Team members, roles and permissions', category: 'Pages', path: '/staff', icon: Shield, keywords: ['roles', 'permissions', 'admin'], permission: 'staff.view', shortcut: 'G R' },
       { id: 'email-tpl', name: 'Email Templates', description: 'Transactional email designs', category: 'Pages', path: '/email-templates', icon: MailOpen, permission: 'templates.manage' },
-      { id: 'email-logs', name: 'Email Logs', description: 'Audit history of outbound mail', category: 'Pages', path: '/email-logs', icon: Mail, permission: 'mail.view' },
-      { id: 'activity', name: 'Activity Log', description: 'Platform audit trails & staff actions', category: 'Pages', path: '/activity', icon: History, keywords: ['audit', 'history'], permission: 'activity.view' },
+      { id: 'email-logs', name: 'Email Logs', description: 'Audit history of outbound mail', category: 'Pages', path: '/email-logs', icon: Mail, permission: 'email_logs.view' },
+      { id: 'activity', name: 'Activity Log', description: 'Platform audit trails & staff actions', category: 'Pages', path: '/activity', icon: History, keywords: ['audit', 'history'], permission: 'activity.view', shortcut: 'G A' },
       { id: 'blog', name: 'Blog Articles', description: 'Editorial and release news', category: 'Pages', path: '/blog', icon: FileText, permission: 'blog.view' },
-      { id: 'settings', name: 'System Settings', description: 'Platform credentials & environment', category: 'Pages', path: '/settings', icon: Settings, permission: 'settings.manage' },
+      { id: 'settings', name: 'System Settings', description: 'Platform credentials & environment', category: 'Pages', path: '/settings', icon: Settings, permission: 'settings.manage', shortcut: 'G X' },
 
       // Actions
       { id: 'act-prov', name: 'Provision New Service', description: 'Manually allocate a server or storage account', category: 'Actions', path: '/services/new', icon: Plus, permission: 'services.manage' },
+      { id: 'act-inv', name: 'Create New Invoice', description: 'Generate a customer invoice with line items', category: 'Actions', path: '/billing/invoices?new=true', icon: Plus, permission: 'invoices.create' },
       { id: 'act-prod', name: 'Create Product Plan', description: 'Add a new retail hosting configuration', category: 'Actions', path: '/products/new', icon: Plus, permission: 'products.create' },
-      { id: 'act-ticket', name: 'Open Support Ticket', description: 'Create internal or customer ticket', category: 'Actions', path: '/tickets/new', icon: Plus, permission: 'tickets.create' },
-      { id: 'act-explain', name: explainMode ? 'Disable UI Explanations' : 'Enable UI Explanations (Help Mode)', description: 'Toggle interactive ? boxes across CAMOS', category: 'Actions', action: toggleExplainMode, icon: HelpCircle },
+      { id: 'act-ticket', name: 'Open Support Ticket', description: 'Create internal or customer ticket', category: 'Actions', path: '/tickets/new', icon: Plus, permission: 'tickets.reply' },
+      { id: 'act-explain', name: explainMode ? 'Disable UI Explanations' : 'Enable UI Explanations (Help Mode)', description: 'Toggle interactive ? boxes across CAMOS', category: 'Actions', action: toggleExplainMode, icon: HelpCircle, shortcut: 'Alt H' },
 
       // Tools
       { id: 'launchpad', name: 'Internal Launchpad', description: 'Quick access to sovereign internal tooling', category: 'Tools', path: '/launchpad', icon: ExternalLink },
@@ -209,9 +213,16 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono uppercase text-muted-foreground/70 px-2 py-0.5 rounded-full border border-border/60 shrink-0 ml-2">
-                    {item.category}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    {item.shortcut && (
+                      <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-foreground/10 border border-border/60 text-muted-foreground">
+                        {item.shortcut}
+                      </kbd>
+                    )}
+                    <span className="text-[10px] font-mono uppercase text-muted-foreground/70 px-2 py-0.5 rounded-full border border-border/60">
+                      {item.category}
+                    </span>
+                  </div>
                 </button>
               );
             })
